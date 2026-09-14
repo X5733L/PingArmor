@@ -1,0 +1,74 @@
+name: Build, Test and Release
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-test:
+    name: Build, Test & Package
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore PingArmor.slnx
+
+      - name: Build Solution
+        run: dotnet build PingArmor.slnx -c Release --no-restore
+
+      - name: Run Automated Tests
+        run: dotnet test PingArmor.slnx -c Release --no-build --verbosity normal
+
+      - name: Publish Standalone Binary (Single-File, Self-Contained)
+        run: >
+          dotnet publish src/PingArmor.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -o ./dist/publish
+
+      - name: Archive Binaries
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path ./dist/artifacts
+          Compress-Archive -Path ./dist/publish/PingArmor.exe -DestinationPath ./dist/artifacts/PingArmor-v${{ github.ref_name }}-win-x64.zip
+          Copy-Item ./dist/publish/PingArmor.exe -Destination ./dist/artifacts/PingArmor.exe
+
+      - name: Upload Artifacts (Actions Run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PingArmor-Build-${{ github.sha }}
+          path: ./dist/artifacts/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./dist/artifacts/PingArmor-v${{ github.ref_name }}-win-x64.zip
+            ./dist/artifacts/PingArmor.exe
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

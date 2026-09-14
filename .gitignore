@@ -1,0 +1,37 @@
+## .NET / Visual Studio
+bin/
+obj/
+publish/
+publish-standalone/
+out/
+dist/
+
+# Visual Studio & IDE files
+.vs/
+.vscode/
+.idea/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.sln.docstates
+*.DotSettings.user
+
+# Build and test results
+[Tt]est[Rr]esult*
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# Local runtime data
+config.json
+*.local.json
+*.log
+*.tmp
+
+# Windows system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
