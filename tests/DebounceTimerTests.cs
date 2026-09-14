@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,7 +30,7 @@ public class DebounceTimerTests
             };
         }
 
-        public OptimizationResult ApplyPlan(OptimizationPlan plan)
+        public OptimizationResult ApplyPlan(OptimizationPlan plan, bool force = false)
         {
             return new OptimizationResult { Success = true };
         }
@@ -67,5 +67,31 @@ public class DebounceTimerTests
 
         // Must execute exactly once
         Assert.Equal(1, evaluateCount);
+    }
+
+    [Fact]
+    public async Task TriggerManualCheck_WhenNoOptimizationNeeded_LogsFeedbackAndAppliesForcePlan()
+    {
+        var config = new AppConfig();
+        var fakeEngine = new FakeNetworkEngine();
+        using var monitor = new NetworkMonitor(fakeEngine, config);
+
+        var logs = new List<string>();
+        bool optimizationApplied = false;
+
+        monitor.LogMessage += (msg) => logs.Add(msg);
+        monitor.OptimizationApplied += (res) => optimizationApplied = true;
+
+        monitor.Start();
+        await Task.Delay(150); // wait for initial check
+        logs.Clear();
+        optimizationApplied = false;
+
+        monitor.TriggerManualCheck();
+        await Task.Delay(150);
+
+        Assert.True(optimizationApplied);
+        Assert.Contains(logs, l => l.Contains("Manual network optimization requested"));
+        Assert.Contains(logs, l => l.Contains("Metrics are optimal"));
     }
 }

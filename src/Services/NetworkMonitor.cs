@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net.NetworkInformation;
 using System.Threading;
 using PingArmor.Config;
@@ -16,6 +16,8 @@ public class NetworkMonitor : IDisposable
 
     private bool _isRunning;
     private bool _isEvaluating;
+    private bool _recheckRequested;
+    private bool _manualCheckRequested;
 
     public event Action<OptimizationPlan>? PlanEvaluated;
     public event Action<OptimizationResult>? OptimizationApplied;
@@ -47,13 +49,13 @@ public class NetworkMonitor : IDisposable
             }
             catch (Exception ex)
             {
-                LogMessage?.Invoke($"[-] Ошибка подписки на сетевые события: {ex.Message}");
+                LogMessage?.Invoke($"[-] Failed to subscribe to network events: {ex.Message}");
             }
 
             int intervalMs = Math.Max(3, _config.CheckIntervalSeconds) * 1000;
             _watchdogTimer.Change(intervalMs, intervalMs);
 
-            LogMessage?.Invoke($"[+] Фоновый мониторинг запущен (интервал проверки: {_config.CheckIntervalSeconds} сек).");
+            LogMessage?.Invoke($"[+] Background monitoring started (check interval: {_config.CheckIntervalSeconds}s).");
             StatusChanged?.Invoke(true);
 
             // Initial check immediately
@@ -78,26 +80,30 @@ public class NetworkMonitor : IDisposable
             _watchdogTimer.Change(Timeout.Infinite, Timeout.Infinite);
             _debounceTimer.Change(Timeout.Infinite, Timeout.Infinite);
 
-            LogMessage?.Invoke("[*] Мониторинг приостановлен.");
+            LogMessage?.Invoke("[*] Monitoring paused.");
             StatusChanged?.Invoke(false);
         }
     }
 
     public void TriggerManualCheck()
     {
-        LogMessage?.Invoke("[*] Ручной запрос проверки сетевых приоритетов...");
+        LogMessage?.Invoke("[*] Manual network optimization requested...");
+        lock (_lock)
+        {
+            _manualCheckRequested = true;
+        }
         ScheduleEvaluation(0);
     }
 
     private void OnNetworkAddressChanged(object? sender, EventArgs e)
     {
-        LogMessage?.Invoke("[~] Зафиксировано изменение сетевого адреса (NetworkAddressChanged).");
+        LogMessage?.Invoke("[~] Network address change detected (NetworkAddressChanged).");
         ScheduleEvaluation(750);
     }
 
     private void OnNetworkAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e)
     {
-        LogMessage?.Invoke($"[~] Зафиксировано изменение доступности сети (доступна: {e.IsAvailable}).");
+        LogMessage?.Invoke($"[~] Network availability change detected (available: {e.IsAvailable}).");
         ScheduleEvaluation(750);
     }
 
@@ -117,20 +123,41 @@ public class NetworkMonitor : IDisposable
     {
         lock (_lock)
         {
-            if (_isEvaluating) return;
+            if (_isEvaluating)
+            {
+                _recheckRequested = true;
+                return;
+            }
             _isEvaluating = true;
         }
 
         try
         {
-            ExecuteCheck();
+            while (true)
+            {
+                bool isManual;
+                lock (_lock)
+                {
+                    isManual = _manualCheckRequested;
+                    _manualCheckRequested = false;
+                    _recheckRequested = false;
+                }
+
+                ExecuteCheck(isManual);
+
+                lock (_lock)
+                {
+                    if (!_recheckRequested && !_manualCheckRequested)
+                    {
+                        _isEvaluating = false;
+                        break;
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
-            LogMessage?.Invoke($"[-] Ошибка при проверке сети: {ex.Message}");
-        }
-        finally
-        {
+            LogMessage?.Invoke($"[-] Error during network evaluation: {ex.Message}");
             lock (_lock)
             {
                 _isEvaluating = false;
@@ -138,7 +165,7 @@ public class NetworkMonitor : IDisposable
         }
     }
 
-    public OptimizationPlan ExecuteCheck()
+    public OptimizationPlan ExecuteCheck(bool isManual = false)
     {
         var adapters = _engine.GetAdapters();
         var plan = MetricDecisionEngine.Evaluate(adapters, _config);
@@ -155,24 +182,38 @@ public class NetworkMonitor : IDisposable
             }
             OptimizationApplied?.Invoke(result);
         }
+        else if (isManual)
+        {
+            LogMessage?.Invoke($"[*] {plan.Summary}");
+            var result = _engine.ApplyPlan(plan, force: true);
+            foreach (var log in result.Logs)
+            {
+                LogMessage?.Invoke(log);
+            }
+            OptimizationApplied?.Invoke(result);
+        }
 
         // Automatically enable Wi-Fi optimization once connected to access point (Smart Connect-First)
-        if (_config.EnableWlanOptimizer && !WlanOptimizerService.IsGamingModeActive)
+        if (_config.EnableWlanOptimizer)
         {
             try
             {
                 if (WlanOptimizerService.IsAnyWifiConnected())
                 {
+                    bool wasActive = WlanOptimizerService.IsGamingModeActive;
                     var wlanRes = WlanOptimizerService.SetGamingMode(true);
-                    foreach (var log in wlanRes.Logs)
+                    if (isManual || !wasActive)
                     {
-                        LogMessage?.Invoke(log);
+                        foreach (var log in wlanRes.Logs)
+                        {
+                            LogMessage?.Invoke(log);
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                LogMessage?.Invoke($"[-] Ошибка активации игрового режима Wi-Fi: {ex.Message}");
+                LogMessage?.Invoke($"[-] Wi-Fi gaming mode activation error: {ex.Message}");
             }
         }
 

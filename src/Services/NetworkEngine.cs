@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -177,11 +177,11 @@ public class NetworkEngine : INetworkEngine
     /// <summary>
     /// Applies the metric and policy optimization plan.
     /// </summary>
-    public OptimizationResult ApplyPlan(OptimizationPlan plan)
+    public OptimizationResult ApplyPlan(OptimizationPlan plan, bool force = false)
     {
         var result = new OptimizationResult();
 
-        if (!plan.NeedsOptimization || plan.Actions.Count == 0)
+        if (!force && (!plan.NeedsOptimization || plan.Actions.Count == 0))
         {
             result.Success = true;
             result.Logs.Add("Optimization not required: all metrics are in target state.");
@@ -214,10 +214,15 @@ public class NetworkEngine : INetworkEngine
         result.Logs.Add("[+] Registry policies updated (DisableSmartNameResolution=1, AutoDetect=0)");
 
         // Flush system DNS resolver cache
-        if (plan.FlushDns)
+        if (plan.FlushDns || force)
         {
             DnsHelper.FlushDnsCache();
             result.Logs.Add("[+] DNS cache successfully flushed (DnsFlushResolverCache)");
+        }
+
+        if (force && plan.Actions.Count == 0)
+        {
+            result.Logs.Add("[+] All network priorities and metrics are already optimal. Optimization verified.");
         }
 
         result.Success = true;

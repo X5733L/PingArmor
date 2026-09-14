@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using PingArmor.Config;
@@ -36,7 +36,7 @@ public class WlanOptimizerTests : IDisposable
             };
         }
 
-        public OptimizationResult ApplyPlan(OptimizationPlan plan)
+        public OptimizationResult ApplyPlan(OptimizationPlan plan, bool force = false)
         {
             return new OptimizationResult { Success = true };
         }

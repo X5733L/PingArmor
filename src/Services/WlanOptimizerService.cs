@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -226,7 +226,7 @@ public static class WlanOptimizerService
                 {
                     result.Success = true;
                     result.IsGamingModeActive = false;
-                    result.Logs.Add("[~] Wi-Fi еще подключается к сети. Игровой режим активируется сразу после установки соединения.");
+                    result.Logs.Add("[~] Wi-Fi is still connecting. Optimized Wi-Fi settings will activate once connection is established.");
                     return result;
                 }
             }
@@ -368,7 +368,7 @@ public static class WlanOptimizerService
             if (string.IsNullOrEmpty(interfaceName))
             {
                 result.Success = false;
-                result.Logs.Add("[-] Беспроводные интерфейсы Wi-Fi не обнаружены.");
+                result.Logs.Add("[-] No Wi-Fi wireless interfaces detected.");
                 return result;
             }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using PingArmor.Config;
@@ -24,7 +24,7 @@ public class MetricDecisionEngine
         if (primaryAdapter == null)
         {
             plan.NeedsOptimization = false;
-            plan.Summary = "Нет активных адаптеров с доступом к сети.";
+            plan.Summary = "No active network adapters with internet access.";
             return plan;
         }
 
@@ -63,7 +63,7 @@ public class MetricDecisionEngine
                         InterfaceAlias = adapter.Name,
                         CurrentMetric = adapter.CurrentIPv4Metric,
                         TargetMetric = primaryTargetMetric,
-                        Reason = $"Главный интернет-адаптер ({adapter.Type})",
+                        Reason = $"Primary internet adapter ({adapter.Type})",
                         DisableIPv6 = (adapter.Type == AdapterType.PhysicalWiFi && config.DisableIPv6OnWifi)
                     });
                 }
@@ -81,7 +81,7 @@ public class MetricDecisionEngine
                         InterfaceAlias = adapter.Name,
                         CurrentMetric = adapter.CurrentIPv4Metric,
                         TargetMetric = config.DisconnectedAdapterMetric,
-                        Reason = "Отключенный физический порт"
+                        Reason = "Disconnected physical adapter"
                     });
                 }
                 continue;
@@ -99,7 +99,7 @@ public class MetricDecisionEngine
                         InterfaceAlias = adapter.Name,
                         CurrentMetric = adapter.CurrentIPv4Metric,
                         TargetMetric = config.VirtualAdapterMetric,
-                        Reason = "Виртуальный / VPN адаптер (понижение приоритета)"
+                        Reason = "Virtual / VPN adapter (lowered priority)"
                     });
                 }
             }
@@ -107,8 +107,8 @@ public class MetricDecisionEngine
 
         plan.NeedsOptimization = plan.Actions.Count > 0;
         plan.Summary = plan.NeedsOptimization
-            ? $"Требуется оптимизация для {plan.Actions.Count} адаптеров (Главный: '{primaryAdapter.Name}', метрика {primaryTargetMetric})"
-            : $"Метрики в норме. Главный: '{primaryAdapter.Name}' (метрика {primaryTargetMetric})";
+            ? $"Optimization required for {plan.Actions.Count} adapter(s) (Primary: '{primaryAdapter.Name}', metric {primaryTargetMetric})"
+            : $"Metrics are optimal. Primary: '{primaryAdapter.Name}' (metric {primaryTargetMetric})";
 
         return plan;
     }
