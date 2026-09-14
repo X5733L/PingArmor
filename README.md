@@ -8,7 +8,7 @@
 
 ---
 
-### 🌐 Language / Язык / Тіл
+### 🌐 Language
 
 **English** • [Русский](README.ru.md) • [Қазақша](README.kk.md)
 
