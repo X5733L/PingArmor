@@ -87,10 +87,29 @@ public class MetricDecisionEngine
                 continue;
             }
 
-            // 3. Virtual, VPN, TAP, or secondary adapters
-            if (adapter.Type == AdapterType.VirtualOrVpn || (!adapter.IsPhysical && adapter.InterfaceIndex != primaryAdapter.InterfaceIndex))
+            // 3. Secondary connected physical adapters (not primary) — prevent routing conflicts
+            if (adapter.IsPhysical && adapter.IsUp)
             {
-                // Action is required if VPN metric is hijacking (<= primary target metric) OR not 500
+                int secondaryTarget = config.SecondaryPhysicalMetric;
+                if (adapter.CurrentIPv4Metric < primaryTargetMetric || adapter.AutomaticMetric)
+                {
+                    plan.Actions.Add(new OptimizationAction
+                    {
+                        InterfaceIndex = adapter.InterfaceIndex,
+                        InterfaceAlias = adapter.Name,
+                        CurrentMetric = adapter.CurrentIPv4Metric,
+                        TargetMetric = secondaryTarget,
+                        Reason = "Secondary physical adapter (lowered priority to prevent routing conflict)",
+                        DisableIPv6 = (adapter.Type == AdapterType.PhysicalWiFi && config.DisableIPv6OnWifi)
+                    });
+                }
+                continue;
+            }
+
+            // 4. Virtual, VPN, TAP adapters
+            if (adapter.Type == AdapterType.VirtualOrVpn || !adapter.IsPhysical)
+            {
+                // Action is required if VPN metric is hijacking (<= primary target metric) OR not at target
                 if (adapter.CurrentIPv4Metric <= primaryTargetMetric || adapter.CurrentIPv4Metric != config.VirtualAdapterMetric || adapter.AutomaticMetric)
                 {
                     plan.Actions.Add(new OptimizationAction

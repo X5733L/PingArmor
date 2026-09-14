@@ -188,6 +188,20 @@ public class NetworkEngine : INetworkEngine
             return result;
         }
 
+        // Create a backup of current system settings before first optimization
+        try
+        {
+            bool backupCreated = BackupService.CreateBackupIfNotExists();
+            if (backupCreated)
+            {
+                result.Logs.Add("[+] System settings backup created (backup.json). Use --restore to revert changes.");
+            }
+        }
+        catch (Exception ex)
+        {
+            result.Logs.Add($"[!] Warning: failed to create settings backup: {ex.Message}");
+        }
+
         foreach (var action in plan.Actions)
         {
             try
@@ -209,9 +223,16 @@ public class NetworkEngine : INetworkEngine
             }
         }
 
-        // Apply DNSClient and WPAD registry policies
-        DnsHelper.ConfigureDnsPolicies(plan.DisableSmartNameResolution, plan.DisableWpad);
-        result.Logs.Add("[+] Registry policies updated (DisableSmartNameResolution=1, AutoDetect=0)");
+        // Apply DNSClient and WPAD registry policies (conditionally)
+        if (plan.DisableSmartNameResolution || plan.DisableWpad)
+        {
+            DnsHelper.ConfigureDnsPolicies(plan.DisableSmartNameResolution, plan.DisableWpad);
+
+            var policyParts = new List<string>();
+            if (plan.DisableSmartNameResolution) policyParts.Add("DisableSmartNameResolution=1");
+            if (plan.DisableWpad) policyParts.Add("AutoDetect=0");
+            result.Logs.Add($"[+] Registry policies updated ({string.Join(", ", policyParts)})");
+        }
 
         // Flush system DNS resolver cache
         if (plan.FlushDns || force)

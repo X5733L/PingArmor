@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using PingArmor.Config;
 using PingArmor.Models;
@@ -161,4 +161,97 @@ public class MetricDecisionEngineTests
         Assert.False(plan.NeedsOptimization);
         Assert.Empty(plan.Actions);
     }
+
+    [Fact]
+    public void Evaluate_SecondaryPhysicalAdapterWithLowMetric_GetsSecondaryMetric()
+    {
+        // Wi-Fi is primary with internet, Ethernet is secondary connected without internet
+        // Ethernet has a low metric that could compete with primary
+        var wifi = new NetworkAdapterInfo
+        {
+            InterfaceIndex = 4,
+            Name = "Wi-Fi",
+            Type = AdapterType.PhysicalWiFi,
+            IsPhysical = true,
+            IsUp = true,
+            HasInternet = true,
+            CurrentIPv4Metric = 10,
+            AutomaticMetric = false
+        };
+
+        var secondaryEthernet = new NetworkAdapterInfo
+        {
+            InterfaceIndex = 7,
+            Name = "Ethernet",
+            Type = AdapterType.PhysicalEthernet,
+            IsPhysical = true,
+            IsUp = true,
+            HasInternet = false,
+            CurrentIPv4Metric = 5, // Lower than primary Wi-Fi metric (10) — routing conflict!
+            AutomaticMetric = false
+        };
+
+        var adapters = new List<NetworkAdapterInfo> { wifi, secondaryEthernet };
+        var plan = MetricDecisionEngine.Evaluate(adapters, _config);
+
+        Assert.True(plan.NeedsOptimization);
+        Assert.Equal(4, plan.PrimaryAdapter?.InterfaceIndex);
+
+        var ethAction = plan.Actions.FirstOrDefault(a => a.InterfaceIndex == 7);
+        Assert.NotNull(ethAction);
+        Assert.Equal(50, ethAction.TargetMetric); // SecondaryPhysicalMetric default
+        Assert.Contains("Secondary physical adapter", ethAction.Reason);
+    }
+
+    [Fact]
+    public void Evaluate_BugRepro_EthernetNoInternetWithWifiPrimary_FixesRoutingConflict()
+    {
+        // Exact reproduction of the tester's scenario:
+        // Ethernet connected to LAN (no internet, metric=25)
+        // Wi-Fi connected to router (internet, metric=40)
+        // PingArmor should set Wi-Fi as primary (metric=10) and
+        // raise Ethernet metric to prevent routing conflict
+        var wifi = new NetworkAdapterInfo
+        {
+            InterfaceIndex = 4,
+            Name = "Беспроводная сеть 2",
+            Type = AdapterType.PhysicalWiFi,
+            IsPhysical = true,
+            IsUp = true,
+            HasInternet = true,
+            CurrentIPv4Metric = 40,
+            AutomaticMetric = true
+        };
+
+        var ethernet = new NetworkAdapterInfo
+        {
+            InterfaceIndex = 7,
+            Name = "Ethernet",
+            Type = AdapterType.PhysicalEthernet,
+            IsPhysical = true,
+            IsUp = true,
+            HasInternet = false,
+            CurrentIPv4Metric = 25,
+            AutomaticMetric = true
+        };
+
+        var adapters = new List<NetworkAdapterInfo> { wifi, ethernet };
+        var plan = MetricDecisionEngine.Evaluate(adapters, _config);
+
+        Assert.True(plan.NeedsOptimization);
+        // Wi-Fi should be selected as primary (has internet)
+        Assert.Equal(4, plan.PrimaryAdapter?.InterfaceIndex);
+
+        // Wi-Fi should get PrimaryWifiMetric (10)
+        var wifiAction = plan.Actions.FirstOrDefault(a => a.InterfaceIndex == 4);
+        Assert.NotNull(wifiAction);
+        Assert.Equal(10, wifiAction.TargetMetric);
+
+        // Ethernet should get SecondaryPhysicalMetric (50)
+        // Previously this adapter was SKIPPED, causing routing conflict and ping spikes
+        var ethAction = plan.Actions.FirstOrDefault(a => a.InterfaceIndex == 7);
+        Assert.NotNull(ethAction);
+        Assert.Equal(50, ethAction.TargetMetric);
+    }
 }
+

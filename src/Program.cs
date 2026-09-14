@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -124,6 +124,7 @@ public static class Program
         command.Equals("--optimize", StringComparison.OrdinalIgnoreCase) ||
         command.Equals("-o", StringComparison.OrdinalIgnoreCase) ||
         command.Equals("--install-startup", StringComparison.OrdinalIgnoreCase) ||
+        command.Equals("--restore", StringComparison.OrdinalIgnoreCase) ||
         command.Equals("--gaming-on", StringComparison.OrdinalIgnoreCase) ||
         command.Equals("--gaming-off", StringComparison.OrdinalIgnoreCase);
 
@@ -175,6 +176,14 @@ public static class Program
                 foreach (var l in resOff.Logs) Console.WriteLine(l);
                 return resOff.Success ? 0 : 1;
 
+            case "--restore":
+                Console.WriteLine(s.CliRestoring);
+                var restoreLogs = BackupService.RestoreFromBackup();
+                foreach (var log in restoreLogs) Console.WriteLine(log);
+                WlanOptimizerService.RestoreDefaultScan();
+                Console.WriteLine(s.CliRestoreComplete);
+                return 0;
+
             case "--uninstall-startup":
                 bool removed = StartupManager.DisableStartup();
                 Console.WriteLine(removed ? s.StartupTaskRemoveSuccess : s.StartupTaskRemoveFail);
@@ -202,6 +211,7 @@ public static class Program
         Console.WriteLine($"  PingArmor.exe --uninstall-startup {s.CliHelpUninstallStartup}");
         Console.WriteLine($"  PingArmor.exe --gaming-on         {s.CliHelpGamingOn}");
         Console.WriteLine($"  PingArmor.exe --gaming-off        {s.CliHelpGamingOff}");
+        Console.WriteLine($"  PingArmor.exe --restore           {s.CliHelpRestore}");
         Console.WriteLine($"  PingArmor.exe --lang <ru|en|kk>   {s.CliHelpLang}");
     }
 

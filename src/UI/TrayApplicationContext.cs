@@ -35,6 +35,7 @@ public class TrayApplicationContext : ApplicationContext
     private readonly ToolStripMenuItem _languageEnItem;
     private readonly ToolStripMenuItem _languageKkItem;
     private readonly ToolStripMenuItem _showLogsItem;
+    private readonly ToolStripMenuItem _restoreSettingsItem;
     private readonly ToolStripMenuItem? _elevateItem;
     private readonly ToolStripMenuItem _exitItem;
 
@@ -116,6 +117,7 @@ public class TrayApplicationContext : ApplicationContext
         _languageSubmenu.DropDownItems.AddRange(new ToolStripItem[] { _languageRuItem, _languageEnItem, _languageKkItem });
 
         _showLogsItem = new ToolStripMenuItem(strings.EventLog, null, (s, e) => ShowLogForm());
+        _restoreSettingsItem = new ToolStripMenuItem(strings.RestoreSettings, null, OnRestoreSettings);
         _exitItem = new ToolStripMenuItem(strings.Exit, null, (s, e) => ExitApplication());
 
         _contextMenu.Items.Add(_headerMenuItem);
@@ -134,6 +136,7 @@ public class TrayApplicationContext : ApplicationContext
         _contextMenu.Items.Add(_notificationsMenuItem);
         _contextMenu.Items.Add(_languageSubmenu);
         _contextMenu.Items.Add(_showLogsItem);
+        _contextMenu.Items.Add(_restoreSettingsItem);
         _contextMenu.Items.Add(new ToolStripSeparator());
         _contextMenu.Items.Add(_exitItem);
 
@@ -193,6 +196,7 @@ public class TrayApplicationContext : ApplicationContext
         _notificationsMenuItem.Text = s.Notifications;
         _languageSubmenu.Text = s.LanguageSubmenu;
         _showLogsItem.Text = s.EventLog;
+        _restoreSettingsItem.Text = s.RestoreSettings;
         _exitItem.Text = s.Exit;
 
         UpdateLanguageMenuItems();
@@ -292,6 +296,44 @@ public class TrayApplicationContext : ApplicationContext
 
         string state = _config.ShowNotifications ? s.NotificationsEnabled : s.NotificationsDisabled;
         AppendLog(string.Format(s.NotificationsToggledFormat, state));
+    }
+
+    private void OnRestoreSettings(object? sender, EventArgs e)
+    {
+        var s = LocalizationService.Strings;
+
+        if (!BackupService.BackupExists())
+        {
+            AppendLog(s.RestoreNoBackup);
+            if (_config.ShowNotifications)
+            {
+                _notifyIcon.ShowBalloonTip(3000, s.AppTitle, s.RestoreNoBackup, ToolTipIcon.Warning);
+            }
+            return;
+        }
+
+        var confirmResult = MessageBox.Show(
+            s.RestoreConfirmMessage,
+            s.AppTitle,
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+
+        if (confirmResult != DialogResult.Yes) return;
+
+        AppendLog(s.RestoreStarting);
+        var logs = BackupService.RestoreFromBackup();
+        foreach (var log in logs)
+        {
+            AppendLog(log);
+        }
+
+        WlanOptimizerService.RestoreDefaultScan();
+        AppendLog(s.RestoreComplete);
+
+        if (_config.ShowNotifications)
+        {
+            _notifyIcon.ShowBalloonTip(3000, s.AppTitle, s.RestoreComplete, ToolTipIcon.Info);
+        }
     }
 
     private void OnPlanEvaluated(OptimizationPlan plan)

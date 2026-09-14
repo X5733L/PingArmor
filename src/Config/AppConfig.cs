@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -13,6 +13,7 @@ public class AppConfig
     public int PrimaryWifiMetric { get; set; } = 10;
     public int VirtualAdapterMetric { get; set; } = 500;
     public int DisconnectedAdapterMetric { get; set; } = 100;
+    public int SecondaryPhysicalMetric { get; set; } = 50;
     public bool DisableSmartNameResolution { get; set; } = true;
     public bool DisableWpad { get; set; } = true;
     public bool FlushDnsOnChange { get; set; } = true;

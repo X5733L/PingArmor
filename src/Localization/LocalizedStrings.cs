@@ -57,6 +57,16 @@ public class LocalizedStrings
     public required string CliHelpGamingOn { get; init; }
     public required string CliHelpGamingOff { get; init; }
     public required string CliHelpLang { get; init; }
+    public required string CliHelpRestore { get; init; }
+    public required string CliRestoring { get; init; }
+    public required string CliRestoreComplete { get; init; }
+
+    // Backup & Restore UI strings
+    public required string RestoreSettings { get; init; }
+    public required string RestoreNoBackup { get; init; }
+    public required string RestoreConfirmMessage { get; init; }
+    public required string RestoreStarting { get; init; }
+    public required string RestoreComplete { get; init; }
 
     public static readonly LocalizedStrings Ru = new()
     {
@@ -114,7 +124,15 @@ public class LocalizedStrings
         CliHelpUninstallStartup = "Отключить автозапуск",
         CliHelpGamingOn = "Отключить фоновый поиск сетей Wi-Fi",
         CliHelpGamingOff = "Включить стандартный поиск сетей Wi-Fi",
-        CliHelpLang = "Установить язык (ru, en, kk)"
+        CliHelpLang = "Установить язык (ru, en, kk)",
+        CliHelpRestore = "Восстановить исходные сетевые настройки из бэкапа",
+        CliRestoring = "=== Восстановление исходных сетевых настроек... ===",
+        CliRestoreComplete = "=== Восстановление завершено. ===",
+        RestoreSettings = "🔄 Восстановить исходные настройки",
+        RestoreNoBackup = "Файл бэкапа не найден. Восстановление невозможно.",
+        RestoreConfirmMessage = "Вы уверены, что хотите восстановить исходные сетевые настройки?\nВсе изменения, внесённые PingArmor, будут отменены.",
+        RestoreStarting = "[*] Восстановление исходных сетевых настроек...",
+        RestoreComplete = "[+] Исходные сетевые настройки успешно восстановлены."
     };
 
     public static readonly LocalizedStrings En = new()
@@ -173,7 +191,15 @@ public class LocalizedStrings
         CliHelpUninstallStartup = "Disable autostart",
         CliHelpGamingOn = "Disable Wi-Fi background scan",
         CliHelpGamingOff = "Enable standard Wi-Fi scan",
-        CliHelpLang = "Set interface language (ru, en, kk)"
+        CliHelpLang = "Set interface language (ru, en, kk)",
+        CliHelpRestore = "Restore original network settings from backup",
+        CliRestoring = "=== Restoring original network settings... ===",
+        CliRestoreComplete = "=== Restoration complete. ===",
+        RestoreSettings = "🔄 Restore original settings",
+        RestoreNoBackup = "No backup file found. Cannot restore.",
+        RestoreConfirmMessage = "Are you sure you want to restore original network settings?\nAll changes made by PingArmor will be reverted.",
+        RestoreStarting = "[*] Restoring original network settings...",
+        RestoreComplete = "[+] Original network settings successfully restored."
     };
 
     public static readonly LocalizedStrings Kk = new()
@@ -232,6 +258,14 @@ public class LocalizedStrings
         CliHelpUninstallStartup = "Автоіске қосуды өшіру",
         CliHelpGamingOn = "Wi-Fi желілерін фонда іздеуді өшіру",
         CliHelpGamingOff = "Стандартты Wi-Fi іздеуді қосу",
-        CliHelpLang = "Интерфейс тілін орнату (ru, en, kk)"
+        CliHelpLang = "Интерфейс тілін орнату (ru, en, kk)",
+        CliHelpRestore = "Бастапқы желі параметрлерін сақтық көшірмеден қалпына келтіру",
+        CliRestoring = "=== Бастапқы желі параметрлерін қалпына келтіру... ===",
+        CliRestoreComplete = "=== Қалпына келтіру аяқталды. ===",
+        RestoreSettings = "🔄 Бастапқы параметрлерді қалпына келтіру",
+        RestoreNoBackup = "Сақтық көшірме файлы табылмады. Қалпына келтіру мүмкін емес.",
+        RestoreConfirmMessage = "Бастапқы желі параметрлерін қалпына келтіргіңіз келе ме?\nPingArmor жасаған барлық өзгерістер кері қайтарылады.",
+        RestoreStarting = "[*] Бастапқы желі параметрлерін қалпына келтіру...",
+        RestoreComplete = "[+] Бастапқы желі параметрлері сәтті қалпына келтірілді."
     };
 }
