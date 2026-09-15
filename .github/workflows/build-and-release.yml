@@ -36,6 +36,19 @@ jobs:
       - name: Run Automated Tests
         run: dotnet test PingArmor.slnx -c Release --no-build --verbosity normal
 
+      - name: Determine Application Version
+        id: versioning
+        shell: pwsh
+        run: |
+          $refName = "${{ github.ref_name }}"
+          if ($refName -match '^v?(\d+\.\d+\.\d+.*)$') {
+              $appVersion = $Matches[1]
+          } else {
+              $appVersion = "1.0.0"
+          }
+          Write-Host "Resolved Application Version: $appVersion"
+          "APP_VERSION=$appVersion" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Publish Standalone Binary (Single-File, Self-Contained)
         run: >
           dotnet publish src/PingArmor.csproj
@@ -43,6 +56,9 @@ jobs:
           -r win-x64
           --self-contained true
           -p:PublishSingleFile=true
+          -p:Version=${{ env.APP_VERSION }}
+          -p:FileVersion=${{ env.APP_VERSION }}
+          -p:InformationalVersion=${{ github.ref_name }}
           -o ./dist/publish
 
       - name: Archive Binaries
@@ -60,6 +76,74 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Generate Release Changelog
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $currentTag = "${{ github.ref_name }}"
+          $prevTag = $null
+
+          try {
+              $prevTag = (git describe --tags --abbrev=0 "${currentTag}^" 2>$null).Trim()
+          } catch {
+              $prevTag = $null
+          }
+
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($prevTag)) {
+              Write-Host "Previous tag not found. Collecting commits up to $currentTag."
+              $commits = git log --no-merges --pretty=format:"%h%x09%s" "$currentTag"
+          } else {
+              Write-Host "Collecting commits in range $prevTag..$currentTag"
+              $commits = git log --no-merges --pretty=format:"%h%x09%s" "$prevTag..$currentTag"
+          }
+
+          $features = [System.Collections.Generic.List[string]]::new()
+          $fixes = [System.Collections.Generic.List[string]]::new()
+          $others = [System.Collections.Generic.List[string]]::new()
+
+          foreach ($line in @($commits)) {
+              if ([string]::IsNullOrWhiteSpace($line)) { continue }
+              $parts = $line -split "`t", 2
+              if ($parts.Count -lt 2) { continue }
+              $hash = $parts[0].Trim()
+              $msg = $parts[1].Trim()
+
+              if ($msg -match '^(feat|feature)(?:\((?<scope>[^\)]+)\))?:\s*(?<desc>.+)$') {
+                  $scope = if ($Matches['scope']) { "**$($Matches['scope']):** " } else { "" }
+                  $features.Add("- $scope$($Matches['desc']) ($hash)")
+              } elseif ($msg -match '^(fix|bugfix)(?:\((?<scope>[^\)]+)\))?:\s*(?<desc>.+)$') {
+                  $scope = if ($Matches['scope']) { "**$($Matches['scope']):** " } else { "" }
+                  $fixes.Add("- $scope$($Matches['desc']) ($hash)")
+              } else {
+                  $others.Add("- $msg ($hash)")
+              }
+          }
+
+          $sb = [System.Text.StringBuilder]::new()
+          if ($features.Count -gt 0) {
+              [void]$sb.AppendLine("### 🚀 Features")
+              foreach ($item in $features) { [void]$sb.AppendLine($item) }
+              [void]$sb.AppendLine()
+          }
+          if ($fixes.Count -gt 0) {
+              [void]$sb.AppendLine("### 🐛 Fixes")
+              foreach ($item in $fixes) { [void]$sb.AppendLine($item) }
+              [void]$sb.AppendLine()
+          }
+          if ($others.Count -gt 0) {
+              [void]$sb.AppendLine("### 🛠️ Other Changes")
+              foreach ($item in $others) { [void]$sb.AppendLine($item) }
+              [void]$sb.AppendLine()
+          }
+
+          if ($sb.Length -eq 0) {
+              [void]$sb.AppendLine("- Maintenance and routine updates")
+          }
+
+          $changelog = $sb.ToString().TrimEnd()
+          [System.IO.File]::WriteAllText("./dist/release_notes.md", $changelog, [System.Text.Encoding]::UTF8)
+          Write-Host "Generated Changelog:`n$changelog"
+
       - name: Publish GitHub Release (on tag)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -67,7 +151,8 @@ jobs:
           files: |
             ./dist/artifacts/PingArmor-${{ github.ref_name }}-win-x64.zip
             ./dist/artifacts/PingArmor.exe
-          generate_release_notes: true
+          body_path: ./dist/release_notes.md
+          generate_release_notes: false
           draft: false
           prerelease: false
         env:

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using PingArmor.Common;
 using PingArmor.Config;
 using PingArmor.Localization;
 using PingArmor.Models;
@@ -238,7 +239,7 @@ public class TrayApplicationContext : ApplicationContext
         // Update opened log window if currently active
         if (_logForm != null && !_logForm.IsDisposed)
         {
-            _logForm.Text = s.LogWindowTitle;
+            _logForm.Text = GetLogWindowTitle(s);
             if (_btnOptimizeLog != null) _btnOptimizeLog.Text = s.OptimizeNow;
             if (_btnClearLog != null) _btnClearLog.Text = s.Clear;
         }
@@ -433,7 +434,7 @@ public class TrayApplicationContext : ApplicationContext
 
         _logForm = new Form
         {
-            Text = s.LogWindowTitle,
+            Text = GetLogWindowTitle(s),
             Size = new Size(680, 480),
             StartPosition = FormStartPosition.CenterScreen,
             BackColor = Color.FromArgb(30, 30, 30),
@@ -480,6 +481,15 @@ public class TrayApplicationContext : ApplicationContext
 
         _logForm.Show();
         AppendLog(s.LogOpened);
+    }
+
+    private static string GetLogWindowTitle(LocalizedStrings strings)
+    {
+        if (strings.LogWindowTitle.StartsWith("PingArmor -", StringComparison.Ordinal))
+        {
+            return strings.LogWindowTitle.Replace("PingArmor -", $"PingArmor v{AppVersion.Current} -");
+        }
+        return $"PingArmor v{AppVersion.Current} - {strings.LogWindowTitle}";
     }
 
     private void ExitApplication()
