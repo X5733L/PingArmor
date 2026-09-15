@@ -107,8 +107,10 @@ public static class BackupService
     /// <summary>
     /// Restores system network settings from a previously saved backup.
     /// </summary>
+    /// <param name="path">Optional backup file path.</param>
+    /// <param name="deleteBackupAfterRestore">If true, deletes the backup file upon successful restoration.</param>
     /// <returns>List of log messages describing what was restored.</returns>
-    public static List<string> RestoreFromBackup(string? path = null)
+    public static List<string> RestoreFromBackup(string? path = null, bool deleteBackupAfterRestore = false)
     {
         path ??= GetDefaultBackupPath();
         var logs = new List<string>();
@@ -202,6 +204,15 @@ public static class BackupService
         }
 
         logs.Add("[+] System settings restoration complete.");
+
+        if (deleteBackupAfterRestore)
+        {
+            if (DeleteBackup(path))
+            {
+                logs.Add("[+] Backup file deleted after successful restoration (backup.json).");
+            }
+        }
+
         return logs;
     }
 

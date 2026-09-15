@@ -8,7 +8,7 @@ namespace PingArmor.Config;
 
 public class AppConfig
 {
-    public int CheckIntervalSeconds { get; set; } = 10;
+    public int CheckIntervalSeconds { get; set; } = 30;
     public int PrimaryEthernetMetric { get; set; } = 5;
     public int PrimaryWifiMetric { get; set; } = 10;
     public int VirtualAdapterMetric { get; set; } = 500;
@@ -24,6 +24,11 @@ public class AppConfig
     /// WLAN Optimizer: disables Windows background Wi-Fi scanning while running to eliminate latency spikes in gaming and real-time apps.
     /// </summary>
     public bool EnableWlanOptimizer { get; set; } = true;
+
+    /// <summary>
+    /// Reverts all network metrics, DNS registry policies, and IPv6 bindings to their original state upon closing PingArmor.
+    /// </summary>
+    public bool RestoreOnExit { get; set; } = true;
     public string Language { get; set; } = "ru";
     public List<string> ExcludeAdapters { get; set; } = new();
 

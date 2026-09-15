@@ -58,6 +58,19 @@ public class NetworkMonitor : IDisposable
             LogMessage?.Invoke($"[+] Background monitoring started (check interval: {_config.CheckIntervalSeconds}s).");
             StatusChanged?.Invoke(true);
 
+            // Ensure system settings backup exists before first evaluation
+            try
+            {
+                if (BackupService.CreateBackupIfNotExists())
+                {
+                    LogMessage?.Invoke("[+] System settings backup created (backup.json). Use --restore to revert changes.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogMessage?.Invoke($"[!] Warning: failed to create settings backup: {ex.Message}");
+            }
+
             // Initial check immediately
             ScheduleEvaluation(100);
         }

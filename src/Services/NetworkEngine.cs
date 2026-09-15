@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Management;
 using System.Net.NetworkInformation;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using PingArmor.Config;
 using PingArmor.Models;
@@ -89,6 +91,49 @@ public class NetworkEngine : INetworkEngine
 
     private void EnrichMetricsWithNetsh(Dictionary<int, NetworkAdapterInfo> map)
     {
+        // 1. Fast in-process WMI query
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    @"root\StandardCimv2",
+                    "SELECT InterfaceIndex, InterfaceMetric, ConnectionState FROM MSFT_NetIPInterface WHERE AddressFamily = 2"
+                );
+                using var results = searcher.Get();
+                bool foundAny = false;
+                foreach (ManagementObject obj in results)
+                {
+                    if (obj["InterfaceIndex"] != null &&
+                        int.TryParse(obj["InterfaceIndex"].ToString(), out int ifIndex) &&
+                        obj["InterfaceMetric"] != null &&
+                        int.TryParse(obj["InterfaceMetric"].ToString(), out int metric))
+                    {
+                        int connState = obj["ConnectionState"] != null ? Convert.ToInt32(obj["ConnectionState"]) : 0;
+                        if (map.TryGetValue(ifIndex, out var adapter))
+                        {
+                            adapter.CurrentIPv4Metric = metric;
+                            if (connState == 1) // 1 = Connected
+                            {
+                                adapter.IsUp = true;
+                            }
+                            foundAny = true;
+                        }
+                    }
+                }
+
+                if (foundAny)
+                {
+                    return; // Successfully enriched via in-process WMI
+                }
+            }
+            catch
+            {
+                // Fall back to netsh execution below if WMI query fails
+            }
+        }
+
+        // 2. Fallback to netsh if WMI is unavailable
         try
         {
             var psi = new ProcessStartInfo
@@ -137,6 +182,45 @@ public class NetworkEngine : INetworkEngine
 
     private void EnrichInternetStatus(Dictionary<int, NetworkAdapterInfo> map)
     {
+        // 1. Fast in-process WMI query
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    @"root\StandardCimv2",
+                    "SELECT InterfaceIndex, IPv4Connectivity, IPv6Connectivity FROM MSFT_NetConnectionProfile"
+                );
+                using var results = searcher.Get();
+                bool foundAny = false;
+                foreach (ManagementObject obj in results)
+                {
+                    if (obj["InterfaceIndex"] != null &&
+                        int.TryParse(obj["InterfaceIndex"].ToString(), out int ifIndex))
+                    {
+                        int ipv4 = obj["IPv4Connectivity"] != null ? Convert.ToInt32(obj["IPv4Connectivity"]) : 0;
+                        int ipv6 = obj["IPv6Connectivity"] != null ? Convert.ToInt32(obj["IPv6Connectivity"]) : 0;
+                        if (map.TryGetValue(ifIndex, out var adapter))
+                        {
+                            // 4 = Internet in NCSI connectivity enum
+                            adapter.HasInternet = (ipv4 == 4 || ipv6 == 4);
+                            foundAny = true;
+                        }
+                    }
+                }
+
+                if (foundAny)
+                {
+                    return; // Successfully enriched via in-process WMI
+                }
+            }
+            catch
+            {
+                // Fall back to PowerShell query below if WMI query fails
+            }
+        }
+
+        // 2. Fallback to PowerShell if WMI is unavailable
         try
         {
             // Query Windows connection profile statuses

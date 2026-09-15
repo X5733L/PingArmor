@@ -67,6 +67,11 @@ public class LocalizedStrings
     public required string RestoreConfirmMessage { get; init; }
     public required string RestoreStarting { get; init; }
     public required string RestoreComplete { get; init; }
+    public required string RestoreOnExit { get; init; }
+    public required string CliHelpBackup { get; init; }
+    public required string CliBackupCreating { get; init; }
+    public required string CliBackupComplete { get; init; }
+    public required string BackupCreatedToast { get; init; }
 
     public static readonly LocalizedStrings Ru = new()
     {
@@ -132,7 +137,12 @@ public class LocalizedStrings
         RestoreNoBackup = "Файл бэкапа не найден. Восстановление невозможно.",
         RestoreConfirmMessage = "Вы уверены, что хотите восстановить исходные сетевые настройки?\nВсе изменения, внесённые PingArmor, будут отменены.",
         RestoreStarting = "[*] Восстановление исходных сетевых настроек...",
-        RestoreComplete = "[+] Исходные сетевые настройки успешно восстановлены."
+        RestoreComplete = "[+] Исходные сетевые настройки успешно восстановлены.",
+        RestoreOnExit = "Безопасный выход (откат настроек при закрытии)",
+        CliHelpBackup = "Создать резервную копию текущих сетевых настроек",
+        CliBackupCreating = "=== Создание резервной копии настроек сети... ===",
+        CliBackupComplete = "=== Резервная копия успешно создана (backup.json). ===",
+        BackupCreatedToast = "Резервная копия исходных настроек создана (backup.json)."
     };
 
     public static readonly LocalizedStrings En = new()
@@ -199,7 +209,12 @@ public class LocalizedStrings
         RestoreNoBackup = "No backup file found. Cannot restore.",
         RestoreConfirmMessage = "Are you sure you want to restore original network settings?\nAll changes made by PingArmor will be reverted.",
         RestoreStarting = "[*] Restoring original network settings...",
-        RestoreComplete = "[+] Original network settings successfully restored."
+        RestoreComplete = "[+] Original network settings successfully restored.",
+        RestoreOnExit = "Safe exit (restore original settings on close)",
+        CliHelpBackup = "Create backup of current network settings",
+        CliBackupCreating = "=== Creating backup of network settings... ===",
+        CliBackupComplete = "=== Backup successfully created (backup.json). ===",
+        BackupCreatedToast = "Backup of original settings created (backup.json)."
     };
 
     public static readonly LocalizedStrings Kk = new()
@@ -266,6 +281,11 @@ public class LocalizedStrings
         RestoreNoBackup = "Сақтық көшірме файлы табылмады. Қалпына келтіру мүмкін емес.",
         RestoreConfirmMessage = "Бастапқы желі параметрлерін қалпына келтіргіңіз келе ме?\nPingArmor жасаған барлық өзгерістер кері қайтарылады.",
         RestoreStarting = "[*] Бастапқы желі параметрлерін қалпына келтіру...",
-        RestoreComplete = "[+] Бастапқы желі параметрлері сәтті қалпына келтірілді."
+        RestoreComplete = "[+] Бастапқы желі параметрлері сәтті қалпына келтірілді.",
+        RestoreOnExit = "Қауіпсіз шығу (жабылғанда бастапқы параметрлерді қайтару)",
+        CliHelpBackup = "Ағымдағы желі параметрлерінің сақтық көшірмесін жасау",
+        CliBackupCreating = "=== Желі параметрлерінің сақтық көшірмесі жасалуда... ===",
+        CliBackupComplete = "=== Сақтық көшірме сәтті жасалды (backup.json). ===",
+        BackupCreatedToast = "Бастапқы параметрлердің сақтық көшірмесі жасалды (backup.json)."
     };
 }

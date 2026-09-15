@@ -85,6 +85,13 @@ public static class Program
             }
         }
 
+        // Ensure an initial backup of network settings exists
+        try
+        {
+            BackupService.CreateBackupIfNotExists();
+        }
+        catch { }
+
         var engine = new NetworkEngine(config);
 
         if (cleanArgs.Length > 0)
@@ -125,6 +132,8 @@ public static class Program
         command.Equals("-o", StringComparison.OrdinalIgnoreCase) ||
         command.Equals("--install-startup", StringComparison.OrdinalIgnoreCase) ||
         command.Equals("--restore", StringComparison.OrdinalIgnoreCase) ||
+        command.Equals("--backup", StringComparison.OrdinalIgnoreCase) ||
+        command.Equals("-b", StringComparison.OrdinalIgnoreCase) ||
         command.Equals("--gaming-on", StringComparison.OrdinalIgnoreCase) ||
         command.Equals("--gaming-off", StringComparison.OrdinalIgnoreCase);
 
@@ -184,6 +193,13 @@ public static class Program
                 Console.WriteLine(s.CliRestoreComplete);
                 return 0;
 
+            case "--backup":
+            case "-b":
+                Console.WriteLine(s.CliBackupCreating);
+                BackupService.CreateBackup();
+                Console.WriteLine(s.CliBackupComplete);
+                return 0;
+
             case "--uninstall-startup":
                 bool removed = StartupManager.DisableStartup();
                 Console.WriteLine(removed ? s.StartupTaskRemoveSuccess : s.StartupTaskRemoveFail);
@@ -211,6 +227,7 @@ public static class Program
         Console.WriteLine($"  PingArmor.exe --uninstall-startup {s.CliHelpUninstallStartup}");
         Console.WriteLine($"  PingArmor.exe --gaming-on         {s.CliHelpGamingOn}");
         Console.WriteLine($"  PingArmor.exe --gaming-off        {s.CliHelpGamingOff}");
+        Console.WriteLine($"  PingArmor.exe --backup (-b)       {s.CliHelpBackup}");
         Console.WriteLine($"  PingArmor.exe --restore           {s.CliHelpRestore}");
         Console.WriteLine($"  PingArmor.exe --lang <ru|en|kk>   {s.CliHelpLang}");
     }
@@ -241,10 +258,45 @@ public static class Program
             return 0;
         }
 
+        SetupProcessExitHandler(config);
+
         using var monitor = new NetworkMonitor(engine, config);
         using var trayContext = new TrayApplicationContext(config, engine, monitor);
 
         Application.Run(trayContext);
         return 0;
+    }
+
+    private static void SetupProcessExitHandler(AppConfig config)
+    {
+        AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+        {
+            if (config.RestoreOnExit)
+            {
+                try
+                {
+                    BackupService.RestoreFromBackup(deleteBackupAfterRestore: true);
+                    WlanOptimizerService.RestoreDefaultScan();
+                }
+                catch { }
+            }
+        };
+
+        try
+        {
+            Console.CancelKeyPress += (s, e) =>
+            {
+                if (config.RestoreOnExit)
+                {
+                    try
+                    {
+                        BackupService.RestoreFromBackup(deleteBackupAfterRestore: true);
+                        WlanOptimizerService.RestoreDefaultScan();
+                    }
+                    catch { }
+                }
+            };
+        }
+        catch { }
     }
 }

@@ -30,6 +30,7 @@ public class TrayApplicationContext : ApplicationContext
     private readonly ToolStripMenuItem _startupMenuItem;
     private readonly ToolStripMenuItem _notificationsMenuItem;
     private readonly ToolStripMenuItem _gamingModeMenuItem;
+    private readonly ToolStripMenuItem _restoreOnExitMenuItem;
     private readonly ToolStripMenuItem _languageSubmenu;
     private readonly ToolStripMenuItem _languageRuItem;
     private readonly ToolStripMenuItem _languageEnItem;
@@ -109,6 +110,12 @@ public class TrayApplicationContext : ApplicationContext
             Checked = _config.EnableWlanOptimizer
         };
 
+        _restoreOnExitMenuItem = new ToolStripMenuItem(strings.RestoreOnExit, null, OnToggleRestoreOnExit)
+        {
+            CheckOnClick = true,
+            Checked = _config.RestoreOnExit
+        };
+
         // Language selection submenu
         _languageSubmenu = new ToolStripMenuItem(strings.LanguageSubmenu);
         _languageRuItem = new ToolStripMenuItem("Русский", null, (s, e) => SwitchLanguage(AppLanguage.Ru));
@@ -133,6 +140,7 @@ public class TrayApplicationContext : ApplicationContext
         _contextMenu.Items.Add(new ToolStripSeparator());
         _contextMenu.Items.Add(_startupMenuItem);
         _contextMenu.Items.Add(_gamingModeMenuItem);
+        _contextMenu.Items.Add(_restoreOnExitMenuItem);
         _contextMenu.Items.Add(_notificationsMenuItem);
         _contextMenu.Items.Add(_languageSubmenu);
         _contextMenu.Items.Add(_showLogsItem);
@@ -159,6 +167,16 @@ public class TrayApplicationContext : ApplicationContext
         _monitor.OptimizationApplied += OnOptimizationApplied;
         _monitor.LogMessage += AppendLog;
         _monitor.StatusChanged += OnStatusChanged;
+
+        // Ensure system settings backup exists before monitoring starts
+        try
+        {
+            if (BackupService.CreateBackupIfNotExists())
+            {
+                AppendLog(strings.BackupCreatedToast);
+            }
+        }
+        catch { }
 
         _monitor.Start();
     }
@@ -193,6 +211,7 @@ public class TrayApplicationContext : ApplicationContext
         _toggleMonitoringMenuItem.Text = _monitor.IsRunning ? s.PauseProtection : s.ResumeProtection;
         _startupMenuItem.Text = s.StartupWithWindows;
         _gamingModeMenuItem.Text = s.GamingMode;
+        _restoreOnExitMenuItem.Text = s.RestoreOnExit;
         _notificationsMenuItem.Text = s.Notifications;
         _languageSubmenu.Text = s.LanguageSubmenu;
         _showLogsItem.Text = s.EventLog;
@@ -296,6 +315,13 @@ public class TrayApplicationContext : ApplicationContext
 
         string state = _config.ShowNotifications ? s.NotificationsEnabled : s.NotificationsDisabled;
         AppendLog(string.Format(s.NotificationsToggledFormat, state));
+    }
+
+    private void OnToggleRestoreOnExit(object? sender, EventArgs e)
+    {
+        _config.RestoreOnExit = _restoreOnExitMenuItem.Checked;
+        _config.Save();
+        AppendLog($"[*] Restore settings on exit: {_config.RestoreOnExit}");
     }
 
     private void OnRestoreSettings(object? sender, EventArgs e)
@@ -459,6 +485,16 @@ public class TrayApplicationContext : ApplicationContext
     private void ExitApplication()
     {
         LocalizationService.LanguageChanged -= UpdateLocalization;
+
+        if (_config.RestoreOnExit)
+        {
+            try
+            {
+                BackupService.RestoreFromBackup(deleteBackupAfterRestore: true);
+            }
+            catch { }
+        }
+
         WlanOptimizerService.RestoreDefaultScan();
         _monitor.Dispose();
         _notifyIcon.Visible = false;
