@@ -271,11 +271,12 @@ public static class Program
     {
         AppDomain.CurrentDomain.ProcessExit += (s, e) =>
         {
-            if (config.RestoreOnExit)
+            if (config.RestoreOnExit && !BackupService.HasRestoredOnExit)
             {
                 try
                 {
-                    BackupService.RestoreFromBackup(deleteBackupAfterRestore: true);
+                    BackupService.RestoreFromBackup(deleteBackupAfterRestore: false);
+                    BackupService.HasRestoredOnExit = true;
                     WlanOptimizerService.RestoreDefaultScan();
                 }
                 catch { }
@@ -286,11 +287,12 @@ public static class Program
         {
             Console.CancelKeyPress += (s, e) =>
             {
-                if (config.RestoreOnExit)
+                if (config.RestoreOnExit && !BackupService.HasRestoredOnExit)
                 {
                     try
                     {
-                        BackupService.RestoreFromBackup(deleteBackupAfterRestore: true);
+                        BackupService.RestoreFromBackup(deleteBackupAfterRestore: false);
+                        BackupService.HasRestoredOnExit = true;
                         WlanOptimizerService.RestoreDefaultScan();
                     }
                     catch { }

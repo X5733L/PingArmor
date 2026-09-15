@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Management;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
@@ -22,6 +24,11 @@ public static class BackupService
     {
         WriteIndented = true
     };
+
+    /// <summary>
+    /// Guard flag indicating settings have already been restored on application shutdown.
+    /// </summary>
+    public static bool HasRestoredOnExit { get; set; }
 
     /// <summary>
     /// Returns the default path for the backup file (next to config.json).
@@ -124,6 +131,8 @@ public static class BackupService
 
         logs.Add($"[*] Restoring settings from backup created at {snapshot.CreatedAt:yyyy-MM-dd HH:mm:ss}...");
 
+        var psCommands = new List<string>();
+
         // 1. Restore adapter metrics
         foreach (var adapter in snapshot.Adapters)
         {
@@ -131,18 +140,14 @@ public static class BackupService
             {
                 if (adapter.AutomaticMetric)
                 {
-                    // Restore automatic metric assignment
-                    RunProcess("powershell.exe",
-                        $"-NoProfile -ExecutionPolicy Bypass -Command \"Set-NetIPInterface -InterfaceIndex {adapter.InterfaceIndex} -AutomaticMetric Enabled -ErrorAction SilentlyContinue\"");
+                    psCommands.Add($"Set-NetIPInterface -InterfaceIndex {adapter.InterfaceIndex} -AutomaticMetric Enabled -ErrorAction SilentlyContinue");
                     logs.Add($"[+] Adapter '{adapter.Name}' (id: {adapter.InterfaceIndex}): restored AutomaticMetric=Enabled");
                 }
                 else
                 {
-                    // Restore specific metric value
                     RunProcess("netsh.exe", $"int ipv4 set interface {adapter.InterfaceIndex} metric={adapter.IPv4Metric}");
                     RunProcess("netsh.exe", $"int ipv6 set interface {adapter.InterfaceIndex} metric={adapter.IPv4Metric}");
-                    RunProcess("powershell.exe",
-                        $"-NoProfile -ExecutionPolicy Bypass -Command \"Set-NetIPInterface -InterfaceIndex {adapter.InterfaceIndex} -AutomaticMetric Disabled -InterfaceMetric {adapter.IPv4Metric} -ErrorAction SilentlyContinue\"");
+                    psCommands.Add($"Set-NetIPInterface -InterfaceIndex {adapter.InterfaceIndex} -AutomaticMetric Disabled -InterfaceMetric {adapter.IPv4Metric} -ErrorAction SilentlyContinue");
                     logs.Add($"[+] Adapter '{adapter.Name}' (id: {adapter.InterfaceIndex}): restored metric={adapter.IPv4Metric}");
                 }
             }
@@ -159,14 +164,27 @@ public static class BackupService
             {
                 if (binding.Ipv6Enabled)
                 {
-                    RunProcess("powershell.exe",
-                        $"-NoProfile -ExecutionPolicy Bypass -Command \"Enable-NetAdapterBinding -Name '{binding.AdapterName}' -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue\"");
+                    psCommands.Add($"Enable-NetAdapterBinding -Name '{binding.AdapterName}' -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue");
                     logs.Add($"[+] Adapter '{binding.AdapterName}': IPv6 re-enabled");
                 }
             }
             catch (Exception ex)
             {
                 logs.Add($"[-] Failed to restore IPv6 on '{binding.AdapterName}': {ex.Message}");
+            }
+        }
+
+        // Execute all PowerShell restore operations in a single batched process
+        if (psCommands.Count > 0)
+        {
+            try
+            {
+                string batchedScript = string.Join("; ", psCommands);
+                RunProcess("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"{batchedScript}\"");
+            }
+            catch (Exception ex)
+            {
+                logs.Add($"[-] Failed to execute batched PowerShell restore: {ex.Message}");
             }
         }
 
@@ -260,6 +278,59 @@ public static class BackupService
     {
         var result = new List<AdapterBackup>();
 
+        // 1. Fast in-process WMI query
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    @"root\StandardCimv2",
+                    "SELECT InterfaceIndex, InterfaceAlias, InterfaceMetric, AutomaticMetric FROM MSFT_NetIPInterface WHERE AddressFamily = 2"
+                );
+                using var results = searcher.Get();
+                foreach (ManagementObject obj in results)
+                {
+                    if (obj["InterfaceIndex"] != null &&
+                        int.TryParse(obj["InterfaceIndex"].ToString(), out int ifIndex) &&
+                        obj["InterfaceMetric"] != null &&
+                        int.TryParse(obj["InterfaceMetric"].ToString(), out int metric))
+                    {
+                        string name = obj["InterfaceAlias"]?.ToString() ?? $"Interface {ifIndex}";
+                        bool autoMetric = false;
+                        if (obj["AutomaticMetric"] != null)
+                        {
+                            if (int.TryParse(obj["AutomaticMetric"].ToString(), out int autoVal))
+                            {
+                                autoMetric = (autoVal == 1);
+                            }
+                            else if (bool.TryParse(obj["AutomaticMetric"].ToString(), out bool bVal))
+                            {
+                                autoMetric = bVal;
+                            }
+                        }
+
+                        result.Add(new AdapterBackup
+                        {
+                            InterfaceIndex = ifIndex,
+                            Name = name,
+                            IPv4Metric = metric,
+                            AutomaticMetric = autoMetric
+                        });
+                    }
+                }
+
+                if (result.Count > 0)
+                {
+                    return result;
+                }
+            }
+            catch
+            {
+                // Fall back to PowerShell query below if WMI query fails
+            }
+        }
+
+        // 2. Fallback to PowerShell if WMI is unavailable
         try
         {
             // Use PowerShell to get metrics and AutomaticMetric flag reliably
@@ -304,6 +375,53 @@ public static class BackupService
     {
         var result = new List<Ipv6BindingBackup>();
 
+        // 1. Fast in-process WMI query
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try
+            {
+                var wifiAdapters = NetworkInterface.GetAllNetworkInterfaces()
+                    .Where(n => n.NetworkInterfaceType == NetworkInterfaceType.Wireless80211)
+                    .Select(n => n.Name)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                if (wifiAdapters.Count == 0)
+                {
+                    return result; // No Wi-Fi interfaces to capture
+                }
+
+                using var searcher = new ManagementObjectSearcher(
+                    @"root\StandardCimv2",
+                    "SELECT Name, Enabled FROM MSFT_NetAdapterBindingSettingData WHERE ComponentID = 'ms_tcpip6'"
+                );
+                using var results = searcher.Get();
+                foreach (ManagementObject obj in results)
+                {
+                    string? name = obj["Name"]?.ToString();
+                    if (!string.IsNullOrEmpty(name) && wifiAdapters.Contains(name))
+                    {
+                        bool enabled = obj["Enabled"] != null &&
+                                       Convert.ToBoolean(obj["Enabled"]);
+                        result.Add(new Ipv6BindingBackup
+                        {
+                            AdapterName = name,
+                            Ipv6Enabled = enabled
+                        });
+                    }
+                }
+
+                if (result.Count > 0)
+                {
+                    return result;
+                }
+            }
+            catch
+            {
+                // Fall back to PowerShell query below if WMI query fails
+            }
+        }
+
+        // 2. Fallback to PowerShell if WMI is unavailable
         try
         {
             // Check IPv6 binding on Wi-Fi adapters
@@ -311,6 +429,11 @@ public static class BackupService
                 .Where(n => n.NetworkInterfaceType == NetworkInterfaceType.Wireless80211)
                 .Select(n => n.Name)
                 .ToList();
+
+            if (wifiAdapters.Count == 0)
+            {
+                return result;
+            }
 
             foreach (var adapterName in wifiAdapters)
             {

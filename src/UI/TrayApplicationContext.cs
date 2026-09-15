@@ -496,11 +496,12 @@ public class TrayApplicationContext : ApplicationContext
     {
         LocalizationService.LanguageChanged -= UpdateLocalization;
 
-        if (_config.RestoreOnExit)
+        if (_config.RestoreOnExit && !BackupService.HasRestoredOnExit)
         {
             try
             {
-                BackupService.RestoreFromBackup(deleteBackupAfterRestore: true);
+                BackupService.RestoreFromBackup(deleteBackupAfterRestore: false);
+                BackupService.HasRestoredOnExit = true;
             }
             catch { }
         }

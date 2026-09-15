@@ -75,6 +75,16 @@ public class BackupExitTests : IDisposable
         Assert.DoesNotContain(logs, l => l.Contains("Backup file deleted"));
     }
 
+    [Fact]
+    public void BackupService_HasRestoredOnExit_CanBeToggled()
+    {
+        BackupService.HasRestoredOnExit = false;
+        Assert.False(BackupService.HasRestoredOnExit);
+        BackupService.HasRestoredOnExit = true;
+        Assert.True(BackupService.HasRestoredOnExit);
+        BackupService.HasRestoredOnExit = false;
+    }
+
     public void Dispose()
     {
         try
