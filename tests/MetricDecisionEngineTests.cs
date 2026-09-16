@@ -253,5 +253,35 @@ public class MetricDecisionEngineTests
         Assert.NotNull(ethAction);
         Assert.Equal(50, ethAction.TargetMetric);
     }
+
+    [Fact]
+    public void Evaluate_WhenEnableMetricOptimizationFalse_DoesNotGenerateActions()
+    {
+        var configWithOptDisabled = new AppConfig
+        {
+            EnableMetricOptimization = false,
+            PrimaryEthernetMetric = 5
+        };
+
+        var ethernet = new NetworkAdapterInfo
+        {
+            InterfaceIndex = 7,
+            Name = "Ethernet",
+            Type = AdapterType.PhysicalEthernet,
+            IsPhysical = true,
+            IsUp = true,
+            HasInternet = true,
+            CurrentIPv4Metric = 25,
+            AutomaticMetric = true
+        };
+
+        var adapters = new List<NetworkAdapterInfo> { ethernet };
+        var plan = MetricDecisionEngine.Evaluate(adapters, configWithOptDisabled);
+
+        Assert.False(plan.NeedsOptimization);
+        Assert.Empty(plan.Actions);
+        Assert.Equal(7, plan.PrimaryAdapter?.InterfaceIndex);
+        Assert.Contains("Metric optimization disabled", plan.Summary);
+    }
 }
 

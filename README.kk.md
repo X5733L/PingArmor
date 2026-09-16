@@ -54,9 +54,9 @@
 
 ### 1. Дайын нұсқаны жүктеп алу
 Соңғы нұсқаны **[GitHub Releases](../../releases)** бөлімінен жүктеп алыңыз:
-- **`PingArmor-v*-win-x64.zip`**: Толық дербес орындалатын нұсқа (~50 МБ). Барлық .NET 10 компоненттері бір файлдың ішіне енгізілген. Ешқандай қосымша .NET ортасы немесе SDK орнатпай-ақ кез келген Windows 10/11 жүйесінде бірден іске қосылады.
+- **`PingArmor-v*-win-x64.zip`**: Толық дербес архив. Архивтің ішінде орындалатын файлы мен барлық қажетті WPF кітапханалары бар `PingArmor` бумасы орналасқан. Ешқандай қосымша .NET ортасы немесе SDK орнатпай-ақ кез келген Windows 10/11 жүйесінде бірден іске қосылады.
 
-ZIP архивті ашып, `PingArmor.exe` файлын іске қосыңыз!
+ZIP архивті ашып, `PingArmor` бумасындағы `PingArmor.exe` файлын іске қосыңыз!
 
 ### 2. Бастапқы кодтан тікелей іске қосу
 Егер компьютерде [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) орнатылған болса:
@@ -124,9 +124,9 @@ PingArmor.exe --lang ru    # Русский
 
 ---
 
-## ⚙️ Баптаулар (`config.json`)
+## ⚙️ Баптаулар (`configs/config.json`)
 
-Іске қосылғанда бағдарлама орындалатын файл жанынан автоматты түрде `config.json` файлын жасайды:
+Іске қосылғанда бағдарлама баптаулар файлын `configs/config.json` ішкі бумасында жасайды (параметрлердің сақтық көшірмелері `backups/backup.json`, ал оқиғалар журналы `logs/pingarmor.log` ішінде сақталады):
 
 ```json
 {
@@ -178,6 +178,9 @@ dotnet publish src/PingArmor.csproj -c Release -r win-x64 --self-contained true 
 
 ---
 
-## 📄 Лицензия
+## 📄 Лицензия және алғыстар
 
 Жоба [MIT License](LICENSE) ашық лицензиясы бойынша таратылады.
+
+### Үшінші тарап графигі
+- Бағдарлама белгішесі: [Shield icon](https://www.flaticon.com/authors/magnific), авторы [Magnific](https://www.flaticon.com/authors/magnific) ([Flaticon](https://www.flaticon.com/)).

@@ -17,6 +17,11 @@ public class NetworkBackupSnapshot
 }
 
 /// <summary>
+/// Summary information about an existing network settings backup.
+/// </summary>
+public record BackupInfo(bool Exists, DateTime? CreatedAt, int AdapterCount, string? MachineName, string BackupPath);
+
+/// <summary>
 /// Backup of a single network adapter's metric settings.
 /// </summary>
 public class AdapterBackup

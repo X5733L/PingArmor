@@ -1,0 +1,420 @@
+<ui:FluentWindow
+    x:Class="PingArmor.UI.DashboardWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Title="PingArmor - Панель управления"
+    Icon="pack://application:,,,/app.ico"
+    Width="980"
+    Height="650"
+    MinWidth="860"
+    MinHeight="540"
+    WindowStartupLocation="CenterScreen"
+    WindowBackdropType="Mica"
+    ExtendsContentIntoTitleBar="True"
+    Background="#1E1E22"
+    mc:Ignorable="d">
+
+    <Grid Background="#1E1E22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Windows 11 TitleBar with Snap Layouts -->
+        <ui:TitleBar
+            x:Name="AppTitleBar"
+            Grid.Row="0"
+            Title="PingArmor - Панель управления">
+            <ui:TitleBar.Icon>
+                <ui:SymbolIcon Symbol="Shield24" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <!-- Body: Left Navigation Column + Right Content Column -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Main Navigation View -->
+            <ui:NavigationView
+                x:Name="RootNavigation"
+                Grid.Column="0"
+                PaneDisplayMode="Left"
+                IsBackButtonVisible="Collapsed"
+                IsPaneToggleVisible="True"
+                OpenPaneLength="220"
+                CompactPaneLength="48"
+                SelectionChanged="RootNavigation_SelectionChanged">
+
+                <ui:NavigationView.MenuItems>
+                    <ui:NavigationViewItem x:Name="NavItemOverview" Content="Главная" Tag="Overview" Click="NavItem_Click">
+                        <ui:NavigationViewItem.Icon>
+                            <ui:SymbolIcon Symbol="Home24" />
+                        </ui:NavigationViewItem.Icon>
+                    </ui:NavigationViewItem>
+                    <ui:NavigationViewItem x:Name="NavItemAdapters" Content="Сетевые адаптеры" Tag="Adapters" Click="NavItem_Click">
+                        <ui:NavigationViewItem.Icon>
+                            <ui:SymbolIcon Symbol="Router24" />
+                        </ui:NavigationViewItem.Icon>
+                    </ui:NavigationViewItem>
+                    <ui:NavigationViewItem x:Name="NavItemLog" Content="Журнал событий" Tag="Log" Click="NavItem_Click">
+                        <ui:NavigationViewItem.Icon>
+                            <ui:SymbolIcon Symbol="DocumentText24" />
+                        </ui:NavigationViewItem.Icon>
+                    </ui:NavigationViewItem>
+                </ui:NavigationView.MenuItems>
+
+                <ui:NavigationView.FooterMenuItems>
+                    <ui:NavigationViewItem x:Name="NavItemRollback" Content="Откат и сброс" Tag="Rollback" Click="NavItem_Click">
+                        <ui:NavigationViewItem.Icon>
+                            <ui:SymbolIcon Symbol="History24" />
+                        </ui:NavigationViewItem.Icon>
+                    </ui:NavigationViewItem>
+                    <ui:NavigationViewItem x:Name="NavItemSettings" Content="Параметры" Tag="Settings" Click="NavItem_Click">
+                        <ui:NavigationViewItem.Icon>
+                            <ui:SymbolIcon Symbol="Settings24" />
+                        </ui:NavigationViewItem.Icon>
+                    </ui:NavigationViewItem>
+                </ui:NavigationView.FooterMenuItems>
+            </ui:NavigationView>
+
+            <!-- Page Views Host (Column 1) -->
+            <Grid Grid.Column="1" Margin="24,12,24,18">
+                <!-- Page 1: Overview -->
+                <Grid x:Name="PageOverview" Visibility="Visible">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Header & Command Bar -->
+                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                        <TextBlock x:Name="TxtOverviewTitle" Text="Главная" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <ui:Button x:Name="BtnOverviewOptimize" Content="Оптимизировать сейчас" Appearance="Primary" Margin="0,0,8,0" Click="BtnOptimizeNow_Click">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon Symbol="Flash24" />
+                                </ui:Button.Icon>
+                            </ui:Button>
+                            <ui:Button x:Name="BtnOverviewToggle" Content="Приостановить защиту" Click="BtnToggleProtection_Click">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon x:Name="IconOverviewToggle" Symbol="Pause24" />
+                                </ui:Button.Icon>
+                            </ui:Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Content Cards -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- Hero Status Card -->
+                            <ui:Card Margin="0,0,0,14" Padding="20">
+                                <StackPanel>
+                                    <TextBlock x:Name="TxtHeroStatus" Text="Защищено (Приоритет в норме)" FontSize="16" FontWeight="SemiBold" Foreground="#10B981" Margin="0,0,0,6" />
+                                    <TextBlock x:Name="TxtHeroDesc" Text="PingArmor автоматически отслеживает приоритеты сетевых интерфейсов." FontSize="13" Foreground="#A1A1AA" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </ui:Card>
+
+                            <!-- Active Channel Card -->
+                            <ui:Card Margin="0,0,0,14" Padding="20">
+                                <StackPanel>
+                                    <TextBlock x:Name="TxtActiveChannelHeader" Text="Основной интернет-канал" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                    <TextBlock x:Name="TxtPrimaryAdapterName" Text="Определение..." FontSize="14" FontWeight="Bold" Foreground="#60CDFF" Margin="0,0,0,4" />
+                                    <TextBlock x:Name="TxtPrimaryAdapterDetails" Text="Тип: Ethernet • Метрика: 5 • Интернет: Активен" FontSize="13" Foreground="#A1A1AA" Margin="0,0,0,8" />
+                                    <TextBlock x:Name="TxtWlanGamingStatus" Text="📶 Фоновый поиск сетей Wi-Fi: Отключен (Игровой режим активен)" FontSize="13" Foreground="#10B981" />
+                                </StackPanel>
+                            </ui:Card>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Page 2: Adapters -->
+                <Grid x:Name="PageAdapters" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Header & Command Bar -->
+                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                        <TextBlock x:Name="TxtAdaptersTitle" Text="Сетевые адаптеры" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <ui:Button x:Name="BtnAdaptersRefresh" Content="Обновить" Margin="0,0,8,0" Click="BtnRefreshAdapters_Click">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon Symbol="ArrowClockwise24" />
+                                </ui:Button.Icon>
+                            </ui:Button>
+                            <ui:Button x:Name="BtnAdaptersOptimize" Content="Оптимизировать" Appearance="Primary" Click="BtnOptimizeNow_Click">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon Symbol="Flash24" />
+                                </ui:Button.Icon>
+                            </ui:Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Adapters DataGrid -->
+                    <DataGrid
+                        x:Name="GridAdapters"
+                        Grid.Row="1"
+                        AutoGenerateColumns="False"
+                        CanUserAddRows="False"
+                        CanUserDeleteRows="False"
+                        IsReadOnly="False"
+                        HeadersVisibility="Column"
+                        GridLinesVisibility="Horizontal"
+                        SelectionMode="Single"
+                        RowHeight="36">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn
+                                x:Name="ColExclude"
+                                Header="Исключить"
+                                Binding="{Binding IsExcluded, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                Width="105" />
+                            <DataGridTextColumn
+                                x:Name="ColName"
+                                Header="Адаптер"
+                                Binding="{Binding Name}"
+                                Width="*"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                x:Name="ColType"
+                                Header="Тип"
+                                Binding="{Binding Type}"
+                                Width="140"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                x:Name="ColStatus"
+                                Header="Состояние"
+                                Binding="{Binding Status}"
+                                Width="110"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                x:Name="ColMetric"
+                                Header="Метрика"
+                                Binding="{Binding Metric}"
+                                Width="90"
+                                IsReadOnly="True" />
+                            <DataGridTextColumn
+                                x:Name="ColInternet"
+                                Header="Интернет"
+                                Binding="{Binding Internet}"
+                                Width="90"
+                                IsReadOnly="True" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+
+                <!-- Page 3: Settings (Tuning) -->
+                <Grid x:Name="PageSettings" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock x:Name="TxtSettingsTitle" Grid.Row="0" Text="Параметры" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16" />
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,0,8,0">
+                            <!-- Group 1: Сетевые настройки и оптимизация Windows -->
+                            <TextBlock x:Name="TxtSettingsGroupNetwork" Text="Сетевые настройки и оптимизация Windows" FontSize="14" FontWeight="SemiBold" Foreground="#A1A1AA" Margin="0,4,0,12" />
+
+                            <ui:CardControl x:Name="CardMetricOpt" Header="Оптимизировать приоритеты сети" Margin="0,0,0,10">
+                                <ui:CardControl.Icon>
+                                    <ui:SymbolIcon Symbol="Flash24" />
+                                </ui:CardControl.Icon>
+                                <ui:ToggleSwitch x:Name="SwMetricOpt" Click="SwMetricOpt_Click" />
+                            </ui:CardControl>
+
+                            <ui:CardControl x:Name="CardGamingMode" Header="Отключение фонового поиска Wi-Fi" Margin="0,0,0,10">
+                                <ui:CardControl.Icon>
+                                    <ui:SymbolIcon Symbol="WifiSettings20" />
+                                </ui:CardControl.Icon>
+                                <ui:ToggleSwitch x:Name="SwGamingMode" Click="SwGamingMode_Click" />
+                            </ui:CardControl>
+
+                            <ui:CardControl x:Name="CardDisableIPv6" Header="Отключение IPv6 на адаптерах Wi-Fi" Margin="0,0,0,10">
+                                <ui:CardControl.Icon>
+                                    <ui:SymbolIcon Symbol="ShieldProhibited24" />
+                                </ui:CardControl.Icon>
+                                <ui:ToggleSwitch x:Name="SwDisableIPv6" Click="SwDisableIPv6_Click" />
+                            </ui:CardControl>
+
+                            <ui:CardControl x:Name="CardDisableSmartDns" Header="Отключение Smart Name Resolution (DNS)" Margin="0,0,0,10">
+                                <ui:CardControl.Icon>
+                                    <ui:SymbolIcon Symbol="Globe24" />
+                                </ui:CardControl.Icon>
+                                <ui:ToggleSwitch x:Name="SwDisableSmartDns" Click="SwDisableSmartDns_Click" />
+                            </ui:CardControl>
+
+                            <ui:CardControl x:Name="CardDisableWpad" Header="Отключение автоопределения прокси (WPAD)" Margin="0,0,0,10">
+                                <ui:CardControl.Icon>
+                                    <ui:SymbolIcon Symbol="ShieldCheckmark24" />
+                                </ui:CardControl.Icon>
+                                <ui:ToggleSwitch x:Name="SwDisableWpad" Click="SwDisableWpad_Click" />
+                            </ui:CardControl>
+
+                            <ui:CardControl x:Name="CardFlushDns" Header="Автоматическая очистка кэша DNS" Margin="0,0,0,10">
+                                <ui:CardControl.Icon>
+                                    <ui:SymbolIcon Symbol="Broom24" />
+                                </ui:CardControl.Icon>
+                                <ui:ToggleSwitch x:Name="SwFlushDns" Click="SwFlushDns_Click" />
+                            </ui:CardControl>
+
+                            <!-- Group 2: Настройки программы PingArmor -->
+                            <TextBlock x:Name="TxtSettingsGroupApp" Text="Настройки программы PingArmor" FontSize="14" FontWeight="SemiBold" Foreground="#A1A1AA" Margin="0,16,0,12" />
+
+                            <ui:CardControl x:Name="CardStartup" Header="Автозапуск при входе в Windows" Margin="0,0,0,10">
+                                <ui:CardControl.Icon>
+                                    <ui:SymbolIcon Symbol="Power24" />
+                                </ui:CardControl.Icon>
+                                <ui:ToggleSwitch x:Name="SwStartup" Click="SwStartup_Click" />
+                            </ui:CardControl>
+
+                            <ui:CardControl x:Name="CardRestoreOnExit" Header="Безопасный выход (откат настроек при закрытии)" Margin="0,0,0,10">
+                                <ui:CardControl.Icon>
+                                    <ui:SymbolIcon Symbol="ArrowReset24" />
+                                </ui:CardControl.Icon>
+                                <ui:ToggleSwitch x:Name="SwRestoreOnExit" Click="SwRestoreOnExit_Click" />
+                            </ui:CardControl>
+
+                            <ui:CardControl x:Name="CardNotifications" Header="Всплывающие уведомления" Margin="0,0,0,10">
+                                <ui:CardControl.Icon>
+                                    <ui:SymbolIcon Symbol="Alert24" />
+                                </ui:CardControl.Icon>
+                                <ui:ToggleSwitch x:Name="SwNotifications" Click="SwNotifications_Click" />
+                            </ui:CardControl>
+
+                            <!-- Language Switcher Card -->
+                            <ui:CardControl x:Name="CardLang" Header="Язык интерфейса" Margin="0,0,0,10">
+                                <ui:CardControl.Icon>
+                                    <ui:SymbolIcon Symbol="LocalLanguage24" />
+                                </ui:CardControl.Icon>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:Button x:Name="BtnLangRu" Content="RU" Margin="0,0,4,0" Click="BtnLang_Click" Tag="ru" />
+                                    <ui:Button x:Name="BtnLangEn" Content="EN" Margin="0,0,4,0" Click="BtnLang_Click" Tag="en" />
+                                    <ui:Button x:Name="BtnLangKk" Content="KK" Click="BtnLang_Click" Tag="kk" />
+                                </StackPanel>
+                            </ui:CardControl>
+
+                            <!-- About / Credits Card -->
+                            <ui:Card Margin="0,0,0,10" Padding="14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <ui:SymbolIcon Symbol="Info24" FontSize="20" Margin="0,0,14,0" VerticalAlignment="Center" Foreground="#A1A1AA" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock x:Name="TxtAboutApp" Text="PingArmor" FontWeight="SemiBold" FontSize="13" Foreground="#E4E4E7" />
+                                        <TextBlock x:Name="TxtAboutIconCredit" Text="Иконка приложения: Magnific (Flaticon)" FontSize="11" Foreground="#71717A" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </Grid>
+                            </ui:Card>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Page 4: Rollback & Reset -->
+                <Grid x:Name="PageRollback" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                        <TextBlock x:Name="TxtRollbackTitle" Text="Откат и сброс" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <ui:Button x:Name="BtnRollbackTopRestore" Content="Восстановить настройки" Appearance="Primary" HorizontalAlignment="Right" Click="BtnRestoreSettings_Click">
+                            <ui:Button.Icon>
+                                <ui:SymbolIcon Symbol="ArrowReset24" />
+                            </ui:Button.Icon>
+                        </ui:Button>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- Card 1: PingArmor Backup -->
+                            <ui:Card Margin="0,0,0,14" Padding="20">
+                                <StackPanel>
+                                    <TextBlock x:Name="TxtBackupCardTitle" Text="Резервная копия настроек PingArmor" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                    <TextBlock x:Name="TxtBackupStatus" Text="Снимок создан: ..." FontSize="14" FontWeight="Bold" Foreground="#10B981" Margin="0,0,0,4" />
+                                    <TextBlock x:Name="TxtBackupDesc" Text="Мгновенный откат всех параметров, измененных PingArmor, в исходное состояние без перезагрузки." FontSize="13" Foreground="#A1A1AA" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                    <ui:Button x:Name="BtnRestoreSettingsCard" Content="Восстановить исходные настройки" Appearance="Primary" HorizontalAlignment="Left" Click="BtnRestoreSettings_Click">
+                                        <ui:Button.Icon>
+                                            <ui:SymbolIcon Symbol="ArrowReset24" />
+                                        </ui:Button.Icon>
+                                    </ui:Button>
+                                </StackPanel>
+                            </ui:Card>
+
+                            <!-- Card 2: Windows Network Stack Reset -->
+                            <ui:Card Margin="0,0,0,14" Padding="20">
+                                <StackPanel>
+                                    <TextBlock x:Name="TxtWindowsResetTitle" Text="Сброс сети Windows" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                    <TextBlock x:Name="TxtWindowsResetDesc" Text="Открывает «Дополнительные сетевые параметры». В открывшемся окне прокрутите вниз до блока «Дополнительные параметры» и выберите «Сброс сети» → «Сбросить сейчас»." FontSize="13" Foreground="#A1A1AA" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                    <ui:Button x:Name="BtnOpenWindowsSettings" Content="Открыть сброс сети в Параметрах Windows" HorizontalAlignment="Left" Click="BtnOpenWindowsSettings_Click">
+                                        <ui:Button.Icon>
+                                            <ui:SymbolIcon Symbol="Open24" />
+                                        </ui:Button.Icon>
+                                    </ui:Button>
+                                </StackPanel>
+                            </ui:Card>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Page 5: Event Log -->
+                <Grid x:Name="PageLog" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                        <TextBlock x:Name="TxtLogTitle" Text="Журнал событий" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <ui:Button x:Name="BtnLogOptimize" Content="Оптимизировать" Appearance="Primary" Margin="0,0,8,0" Click="BtnOptimizeNow_Click">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon Symbol="Flash24" />
+                                </ui:Button.Icon>
+                            </ui:Button>
+                            <ui:Button x:Name="BtnLogClear" Content="Очистить" Margin="0,0,8,0" Click="BtnLogClear_Click">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon Symbol="Broom24" />
+                                </ui:Button.Icon>
+                            </ui:Button>
+                            <ui:Button x:Name="BtnLogOpenFile" Content="Файл лога" Margin="0,0,8,0" Click="BtnLogOpenFile_Click">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon Symbol="Document24" />
+                                </ui:Button.Icon>
+                            </ui:Button>
+                            <ui:Button x:Name="BtnLogCopy" Content="Копировать" Click="BtnLogCopy_Click">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon Symbol="Copy24" />
+                                </ui:Button.Icon>
+                            </ui:Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBox
+                        x:Name="TbLog"
+                        Grid.Row="1"
+                        IsReadOnly="True"
+                        VerticalScrollBarVisibility="Auto"
+                        TextWrapping="Wrap"
+                        FontFamily="Consolas"
+                        FontSize="13"
+                        Background="#141416"
+                        Foreground="#E4E4E7"
+                        BorderThickness="1"
+                        BorderBrush="#2E2E36"
+                        Padding="10" />
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

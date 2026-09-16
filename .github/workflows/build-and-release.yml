@@ -64,15 +64,17 @@ jobs:
       - name: Archive Binaries
         shell: pwsh
         run: |
+          $stagingDir = "./dist/staging/PingArmor"
+          New-Item -ItemType Directory -Force -Path $stagingDir
+          Get-ChildItem -Path ./dist/publish -Exclude *.pdb | Copy-Item -Destination $stagingDir -Recurse -Force
           New-Item -ItemType Directory -Force -Path ./dist/artifacts
-          Compress-Archive -Path ./dist/publish/PingArmor.exe -DestinationPath ./dist/artifacts/PingArmor-${{ github.ref_name }}-win-x64.zip
-          Copy-Item ./dist/publish/PingArmor.exe -Destination ./dist/artifacts/PingArmor.exe
+          Compress-Archive -Path $stagingDir -DestinationPath ./dist/artifacts/PingArmor-${{ github.ref_name }}-win-x64.zip -Force
 
       - name: Upload Artifacts (Actions Run)
         uses: actions/upload-artifact@v4
         with:
           name: PingArmor-Build-${{ github.sha }}
-          path: ./dist/artifacts/*
+          path: ./dist/artifacts/*.zip
           if-no-files-found: error
           retention-days: 30
 
@@ -150,7 +152,6 @@ jobs:
         with:
           files: |
             ./dist/artifacts/PingArmor-${{ github.ref_name }}-win-x64.zip
-            ./dist/artifacts/PingArmor.exe
           body_path: ./dist/release_notes.md
           generate_release_notes: false
           draft: false

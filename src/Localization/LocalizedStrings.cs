@@ -73,6 +73,63 @@ public class LocalizedStrings
     public required string CliBackupComplete { get; init; }
     public required string BackupCreatedToast { get; init; }
 
+    // Dashboard & Fluent UI strings
+    public required string OpenDashboard { get; init; }
+    public required string NavOverview { get; init; }
+    public required string NavAdapters { get; init; }
+    public required string NavTuning { get; init; }
+    public required string NavRollback { get; init; }
+    public required string NavLog { get; init; }
+
+    public required string DashboardTitle { get; init; }
+    public required string HeroCardTitle { get; init; }
+    public required string ActiveChannelTitle { get; init; }
+    public required string MetricOptimizationTitle { get; init; }
+    public required string MetricOptimizationDesc { get; init; }
+
+    public required string WlanOptimizerDesc { get; init; }
+    public required string StartupDesc { get; init; }
+    public required string RestoreOnExitDesc { get; init; }
+    public required string NotificationsDesc { get; init; }
+    public required string DisableIPv6OnWifiTitle { get; init; }
+    public required string DisableIPv6OnWifiDesc { get; init; }
+    public required string DisableSmartDnsTitle { get; init; }
+    public required string DisableSmartDnsDesc { get; init; }
+    public required string DisableWpadTitle { get; init; }
+    public required string DisableWpadDesc { get; init; }
+    public required string FlushDnsTitle { get; init; }
+    public required string FlushDnsDesc { get; init; }
+    public required string SettingsGroupNetwork { get; init; }
+    public required string SettingsGroupApp { get; init; }
+
+    public required string RollbackBackupCardTitle { get; init; }
+    public required string RollbackBackupStatusFound { get; init; }
+    public required string RollbackBackupStatusNotFound { get; init; }
+    public required string RollbackBackupDesc { get; init; }
+    public required string RollbackWindowsResetTitle { get; init; }
+    public required string RollbackWindowsResetDesc { get; init; }
+    public required string BtnWindowsReset { get; init; }
+    public required string BtnOpenWindowsSettings { get; init; }
+    public required string ResetConfirmTitle { get; init; }
+    public required string ResetConfirmMessage { get; init; }
+    public required string ResetCompletedMessage { get; init; }
+
+    public required string AdaptersHeaderName { get; init; }
+    public required string AdaptersHeaderType { get; init; }
+    public required string AdaptersHeaderStatus { get; init; }
+    public required string AdaptersHeaderMetric { get; init; }
+    public required string AdaptersHeaderInternet { get; init; }
+    public required string AdaptersHeaderExclude { get; init; }
+    public required string AdaptersExcludedTag { get; init; }
+    public required string AdaptersActiveTag { get; init; }
+    public required string AdaptersDisconnectedTag { get; init; }
+
+    public required string CopyLog { get; init; }
+    public required string LogOpenFile { get; init; }
+    public required string LogCopiedToast { get; init; }
+    public required string LanguageInterfaceTitle { get; init; }
+    public required string LanguageInterfaceDesc { get; init; }
+
     public static readonly LocalizedStrings Ru = new()
     {
         AppTitle = "PingArmor",
@@ -141,8 +198,64 @@ public class LocalizedStrings
         RestoreOnExit = "Безопасный выход (откат настроек при закрытии)",
         CliHelpBackup = "Создать резервную копию текущих сетевых настроек",
         CliBackupCreating = "=== Создание резервной копии настроек сети... ===",
-        CliBackupComplete = "=== Резервная копия успешно создана (backup.json). ===",
-        BackupCreatedToast = "Резервная копия исходных настроек создана (backup.json)."
+        CliBackupComplete = "=== Резервная копия успешно создана (backups/backup.json). ===",
+        BackupCreatedToast = "Резервная копия исходных настроек создана (backups/backup.json).",
+
+        OpenDashboard = "Панель управления",
+        NavOverview = "Главная",
+        NavAdapters = "Сетевые адаптеры",
+        NavTuning = "Параметры",
+        NavRollback = "Откат и сброс",
+        NavLog = "Журнал событий",
+
+        DashboardTitle = "PingArmor - Панель управления",
+        HeroCardTitle = "Состояние сетевого приоритета",
+        ActiveChannelTitle = "Основной интернет-канал",
+        MetricOptimizationTitle = "⚡ Оптимизировать приоритеты сети",
+        MetricOptimizationDesc = "Назначает высший приоритет основному каналу и снижает метрику виртуальных/VPN адаптеров.",
+
+        WlanOptimizerDesc = "Блокирует фоновый поиск сетей Windows во время игры (устраняет скачки пинга).",
+        StartupDesc = "Автоматический запуск PingArmor в фоновом режиме при старте Windows.",
+        RestoreOnExitDesc = "При выходе из PingArmor возвращает сетевые метрики и политики в исходное состояние.",
+        NotificationsDesc = "Показ всплывающих сообщений при изменении приоритетов и состояния адаптеров.",
+        DisableIPv6OnWifiTitle = "🚫 Отключение IPv6 на адаптерах Wi-Fi",
+        DisableIPv6OnWifiDesc = "Устраняет задержки dual-stack fallback и предотвращает утечки DNS на Wi-Fi.",
+        DisableSmartDnsTitle = "⚡ Отключение Smart Name Resolution (DNS)",
+        DisableSmartDnsDesc = "Запрещает отправку параллельных DNS-запросов во все интерфейсы сразу.",
+        DisableWpadTitle = "🛡️ Отключение автоопределения прокси (WPAD)",
+        DisableWpadDesc = "Устраняет сетевые задержки при поиске прокси-серверов в локальной сети.",
+        FlushDnsTitle = "🔄 Автоматическая очистка кэша DNS",
+        FlushDnsDesc = "Сбрасывает системный кэш DNS при смене маршрутов для мгновенного обновления.",
+        SettingsGroupNetwork = "Сетевые настройки и оптимизация Windows",
+        SettingsGroupApp = "Настройки программы PingArmor",
+
+        RollbackBackupCardTitle = "Резервная копия PingArmor",
+        RollbackBackupStatusFound = "Снимок создан: {0} ({1} адапт.)",
+        RollbackBackupStatusNotFound = "Снимок еще не создан",
+        RollbackBackupDesc = "Мгновенный откат всех параметров, измененных PingArmor, в исходное состояние без перезагрузки.",
+        RollbackWindowsResetTitle = "Сброс сети Windows",
+        RollbackWindowsResetDesc = "Открывает «Дополнительные сетевые параметры». В открывшемся окне прокрутите вниз до блока «Дополнительные параметры» и выберите «Сброс сети» → «Сбросить сейчас» (переустановит адаптеры и перезагрузит ПК).",
+        BtnWindowsReset = "Сбросить сетевой стек Windows",
+        BtnOpenWindowsSettings = "Открыть сброс сети в Параметрах Windows",
+        LanguageInterfaceTitle = "Язык интерфейса",
+        LanguageInterfaceDesc = "Выберите язык приложения PingArmor (RU, EN, KK)",
+        ResetConfirmTitle = "Подтверждение сброса",
+        ResetConfirmMessage = "Вы действительно хотите сбросить сетевой стек Windows (Winsock, TCP/IP, AutomaticMetric)?\nВсе сетевые настройки вернутся к заводским значениям.",
+        ResetCompletedMessage = "Сетевой стек Windows успешно сброшен к заводским параметрам. Рекомендуется перезагрузить компьютер.",
+
+        AdaptersHeaderName = "Адаптер",
+        AdaptersHeaderType = "Тип",
+        AdaptersHeaderStatus = "Состояние",
+        AdaptersHeaderMetric = "Метрика",
+        AdaptersHeaderInternet = "Интернет",
+        AdaptersHeaderExclude = "Исключить",
+        AdaptersExcludedTag = "Исключен",
+        AdaptersActiveTag = "Подключен",
+        AdaptersDisconnectedTag = "Отключен",
+
+        CopyLog = "Копировать",
+        LogOpenFile = "Файл лога",
+        LogCopiedToast = "Журнал событий скопирован в буфер обмена."
     };
 
     public static readonly LocalizedStrings En = new()
@@ -213,8 +326,64 @@ public class LocalizedStrings
         RestoreOnExit = "Safe exit (restore original settings on close)",
         CliHelpBackup = "Create backup of current network settings",
         CliBackupCreating = "=== Creating backup of network settings... ===",
-        CliBackupComplete = "=== Backup successfully created (backup.json). ===",
-        BackupCreatedToast = "Backup of original settings created (backup.json)."
+        CliBackupComplete = "=== Backup successfully created (backups/backup.json). ===",
+        BackupCreatedToast = "Backup of original settings created (backups/backup.json).",
+
+        OpenDashboard = "Dashboard",
+        NavOverview = "Overview",
+        NavAdapters = "Network Adapters",
+        NavTuning = "Settings",
+        NavRollback = "Rollback & Reset",
+        NavLog = "Event Log",
+
+        DashboardTitle = "PingArmor - Dashboard",
+        HeroCardTitle = "Network Priority Status",
+        ActiveChannelTitle = "Primary Internet Channel",
+        MetricOptimizationTitle = "⚡ Optimize network priorities",
+        MetricOptimizationDesc = "Assigns highest priority to primary channel and lowers metrics for virtual/VPN adapters.",
+
+        WlanOptimizerDesc = "Disables Windows background Wi-Fi scanning during games (eliminates ping spikes).",
+        StartupDesc = "Automatically launch PingArmor in background on Windows startup.",
+        RestoreOnExitDesc = "Reverts network metrics and policies to initial state upon exiting PingArmor.",
+        NotificationsDesc = "Show toast notifications when priority or adapter status changes.",
+        DisableIPv6OnWifiTitle = "🚫 Disable IPv6 on Wi-Fi adapters",
+        DisableIPv6OnWifiDesc = "Eliminates dual-stack fallback delays and prevents DNS leaks on Wi-Fi.",
+        DisableSmartDnsTitle = "⚡ Disable Smart Name Resolution (DNS)",
+        DisableSmartDnsDesc = "Prevents Windows from sending DNS queries to all interfaces simultaneously.",
+        DisableWpadTitle = "🛡️ Disable WPAD Proxy Auto-Detect",
+        DisableWpadDesc = "Eliminates network delays caused by probing for proxy servers on local network.",
+        FlushDnsTitle = "🔄 Automatic DNS Cache Flush",
+        FlushDnsDesc = "Flushes system DNS cache whenever routes change for instant updates.",
+        SettingsGroupNetwork = "Windows Network & Optimization Settings",
+        SettingsGroupApp = "PingArmor Application Settings",
+
+        RollbackBackupCardTitle = "PingArmor Backup Snapshot",
+        RollbackBackupStatusFound = "Snapshot created: {0} ({1} adapters)",
+        RollbackBackupStatusNotFound = "No backup snapshot created yet",
+        RollbackBackupDesc = "Instantly reverts all settings modified by PingArmor to original state without restarting.",
+        RollbackWindowsResetTitle = "Windows Network Reset",
+        RollbackWindowsResetDesc = "Opens 'Advanced network settings'. In the opened window, scroll down to 'More settings' and select 'Network reset' -> 'Reset now' (reinstalls adapters and restarts PC).",
+        BtnWindowsReset = "Reset Windows Network Stack",
+        BtnOpenWindowsSettings = "Open Network Reset in Windows Settings",
+        LanguageInterfaceTitle = "Interface Language",
+        LanguageInterfaceDesc = "Select PingArmor application language (RU, EN, KK)",
+        ResetConfirmTitle = "Confirm Reset",
+        ResetConfirmMessage = "Are you sure you want to reset the Windows network stack (Winsock, TCP/IP, AutomaticMetric)?\nAll network interfaces will revert to factory defaults.",
+        ResetCompletedMessage = "Windows network stack was successfully reset to factory defaults. A system restart is recommended.",
+
+        AdaptersHeaderName = "Adapter",
+        AdaptersHeaderType = "Type",
+        AdaptersHeaderStatus = "Status",
+        AdaptersHeaderMetric = "Metric",
+        AdaptersHeaderInternet = "Internet",
+        AdaptersHeaderExclude = "Exclude",
+        AdaptersExcludedTag = "Excluded",
+        AdaptersActiveTag = "Connected",
+        AdaptersDisconnectedTag = "Disconnected",
+
+        CopyLog = "Copy",
+        LogOpenFile = "Log File",
+        LogCopiedToast = "Event log copied to clipboard."
     };
 
     public static readonly LocalizedStrings Kk = new()
@@ -285,7 +454,63 @@ public class LocalizedStrings
         RestoreOnExit = "Қауіпсіз шығу (жабылғанда бастапқы параметрлерді қайтару)",
         CliHelpBackup = "Ағымдағы желі параметрлерінің сақтық көшірмесін жасау",
         CliBackupCreating = "=== Желі параметрлерінің сақтық көшірмесі жасалуда... ===",
-        CliBackupComplete = "=== Сақтық көшірме сәтті жасалды (backup.json). ===",
-        BackupCreatedToast = "Бастапқы параметрлердің сақтық көшірмесі жасалды (backup.json)."
+        CliBackupComplete = "=== Сақтық көшірме сәтті жасалды (backups/backup.json). ===",
+        BackupCreatedToast = "Бастапқы параметрлердің сақтық көшірмесі жасалды (backups/backup.json).",
+
+        OpenDashboard = "Басқару тақтасы",
+        NavOverview = "Басты бет",
+        NavAdapters = "Желілік адаптерлер",
+        NavTuning = "Параметрлер",
+        NavRollback = "Қайтару және тастау",
+        NavLog = "Оқиғалар журналы",
+
+        DashboardTitle = "PingArmor - Басқару тақтасы",
+        HeroCardTitle = "Желі басымдығының күйі",
+        ActiveChannelTitle = "Негізгі интернет арнасы",
+        MetricOptimizationTitle = "⚡ Желі басымдықтарын оңтайландыру",
+        MetricOptimizationDesc = "Негізгі арнаға жоғары басымдық беріп, виртуалды/VPN адаптерлерінің метрикасын төмендетеді.",
+
+        WlanOptimizerDesc = "Ойын кезінде Windows-тың фонда Wi-Fi іздеуін блоктайды (пинг секірулерін жояды).",
+        StartupDesc = "Windows іске қосылғанда PingArmor-ды фонда автоматты түрде қосу.",
+        RestoreOnExitDesc = "PingArmor-дан шыққанда жүйелік метрикалар мен саясаттарды бастапқы күйіне қайтарады.",
+        NotificationsDesc = "Басымдық немесе адаптер күйі өзгергенде қалқымалы хабарламаларды көрсету.",
+        DisableIPv6OnWifiTitle = "🚫 Wi-Fi адаптерлерінде IPv6-ны өшіру",
+        DisableIPv6OnWifiDesc = "Dual-stack fallback кідірістерін және Wi-Fi желісінде DNS ағуын болдырмайды.",
+        DisableSmartDnsTitle = "⚡ Smart Name Resolution (DNS) өшіру",
+        DisableSmartDnsDesc = "DNS сұрауларын барлық интерфейстерге бір уақытта жіберуге тыйым салады.",
+        DisableWpadTitle = "🛡️ WPAD проксиді автоматты анықтауды өшіру",
+        DisableWpadDesc = "Жергілікті желіде прокси-серверлерді іздеуден туындайтын кідірістерді жояды.",
+        FlushDnsTitle = "🔄 DNS кэшін автоматты түрде тазарту",
+        FlushDnsDesc = "Маршруттар өзгерген сайын жүйелік DNS кэшін лезде жаңарту үшін тазартады.",
+        SettingsGroupNetwork = "Windows желілік баптаулары мен оңтайландыру",
+        SettingsGroupApp = "PingArmor бағдарламасының баптаулары",
+
+        RollbackBackupCardTitle = "PingArmor сақтық көшірмесі",
+        RollbackBackupStatusFound = "Сақтық көшірме жасалды: {0} ({1} адапт.)",
+        RollbackBackupStatusNotFound = "Сақтық көшірме әлі жасалмаған",
+        RollbackBackupDesc = "PingArmor өзгерткен барлық параметрлерді қайта жүктеусіз бастапқы қалпына келтіру.",
+        RollbackWindowsResetTitle = "Windows желісін тастау",
+        RollbackWindowsResetDesc = "«Қосымша желілік параметрлер» бөлімін ашады. Төмен қарай айналдырып, «Қосымша параметрлер» -> «Желіні қалпына келтіру» -> «Қазір тастау» тармағын таңдаңыз (адаптерлер қайта орнатылып, компьютер қайта қосылады).",
+        BtnWindowsReset = "Windows желілік стекін тастау",
+        BtnOpenWindowsSettings = "Windows баптауларында желіні қалпына келтіруді ашу",
+        LanguageInterfaceTitle = "Интерфейс тілі",
+        LanguageInterfaceDesc = "PingArmor қолданбасының тілін таңдаңыз (RU, EN, KK)",
+        ResetConfirmTitle = "Тастауды растау",
+        ResetConfirmMessage = "Windows желілік стекін (Winsock, TCP/IP, AutomaticMetric) шынымен тастағыңыз келе ме?\nБарлық желілік баптаулар зауыттық күйге оралады.",
+        ResetCompletedMessage = "Windows желілік стекі зауыттық күйге сәтті тасталды. Компьютерді қайта қосу ұсынылады.",
+
+        AdaptersHeaderName = "Адаптер",
+        AdaptersHeaderType = "Түрі",
+        AdaptersHeaderStatus = "Күйі",
+        AdaptersHeaderMetric = "Метрика",
+        AdaptersHeaderInternet = "Интернет",
+        AdaptersHeaderExclude = "Шығару",
+        AdaptersExcludedTag = "Шығарылған",
+        AdaptersActiveTag = "Қосылған",
+        AdaptersDisconnectedTag = "Ажыратылған",
+
+        CopyLog = "Көшіру",
+        LogOpenFile = "Журнал файлы",
+        LogCopiedToast = "Оқиғалар журналы алмасу буферіне көшірілді."
     };
 }

@@ -24,28 +24,15 @@ public class TrayApplicationContext : ApplicationContext
     private readonly NotifyIcon _notifyIcon;
     private readonly ContextMenuStrip _contextMenu;
     private readonly ToolStripMenuItem _headerMenuItem;
+    private readonly ToolStripMenuItem? _elevateItem;
+    private readonly ToolStripMenuItem _dashboardMenuItem;
     private readonly ToolStripMenuItem _statusMenuItem;
     private readonly ToolStripMenuItem _primaryAdapterMenuItem;
     private readonly ToolStripMenuItem _optimizeNowItem;
     private readonly ToolStripMenuItem _toggleMonitoringMenuItem;
-    private readonly ToolStripMenuItem _startupMenuItem;
-    private readonly ToolStripMenuItem _notificationsMenuItem;
-    private readonly ToolStripMenuItem _gamingModeMenuItem;
-    private readonly ToolStripMenuItem _restoreOnExitMenuItem;
-    private readonly ToolStripMenuItem _languageSubmenu;
-    private readonly ToolStripMenuItem _languageRuItem;
-    private readonly ToolStripMenuItem _languageEnItem;
-    private readonly ToolStripMenuItem _languageKkItem;
-    private readonly ToolStripMenuItem _showLogsItem;
-    private readonly ToolStripMenuItem _restoreSettingsItem;
-    private readonly ToolStripMenuItem? _elevateItem;
     private readonly ToolStripMenuItem _exitItem;
 
-    private Form? _logForm;
-    private TextBox? _logTextBox;
-    private Button? _btnOptimizeLog;
-    private Button? _btnClearLog;
-
+    private DashboardWindow? _dashboardWindow;
     private readonly Dictionary<string, (Icon Icon, IntPtr Handle)> _shieldIcons = new();
     private OptimizationPlan? _lastPlan;
 
@@ -87,45 +74,16 @@ public class TrayApplicationContext : ApplicationContext
             };
         }
 
+        _dashboardMenuItem = new ToolStripMenuItem(strings.OpenDashboard, null, (s, e) => ShowDashboard())
+        {
+            Font = new Font(Control.DefaultFont, FontStyle.Bold)
+        };
+
         _statusMenuItem = new ToolStripMenuItem(strings.StatusInitializing) { Enabled = false };
         _primaryAdapterMenuItem = new ToolStripMenuItem(strings.PrimaryChannelDetecting) { Enabled = false };
 
         _optimizeNowItem = new ToolStripMenuItem(strings.OptimizeNow, null, (s, e) => _monitor.TriggerManualCheck());
         _toggleMonitoringMenuItem = new ToolStripMenuItem(strings.PauseProtection, null, OnToggleMonitoring);
-
-        _startupMenuItem = new ToolStripMenuItem(strings.StartupWithWindows, null, OnToggleStartup)
-        {
-            CheckOnClick = true,
-            Checked = StartupManager.IsStartupEnabled()
-        };
-
-        _notificationsMenuItem = new ToolStripMenuItem(strings.Notifications, null, OnToggleNotifications)
-        {
-            CheckOnClick = true,
-            Checked = _config.ShowNotifications
-        };
-
-        _gamingModeMenuItem = new ToolStripMenuItem(strings.GamingMode, null, OnToggleGamingMode)
-        {
-            CheckOnClick = true,
-            Checked = _config.EnableWlanOptimizer
-        };
-
-        _restoreOnExitMenuItem = new ToolStripMenuItem(strings.RestoreOnExit, null, OnToggleRestoreOnExit)
-        {
-            CheckOnClick = true,
-            Checked = _config.RestoreOnExit
-        };
-
-        // Language selection submenu
-        _languageSubmenu = new ToolStripMenuItem(strings.LanguageSubmenu);
-        _languageRuItem = new ToolStripMenuItem("Русский", null, (s, e) => SwitchLanguage(AppLanguage.Ru));
-        _languageEnItem = new ToolStripMenuItem("English", null, (s, e) => SwitchLanguage(AppLanguage.En));
-        _languageKkItem = new ToolStripMenuItem("Қазақша", null, (s, e) => SwitchLanguage(AppLanguage.Kk));
-        _languageSubmenu.DropDownItems.AddRange(new ToolStripItem[] { _languageRuItem, _languageEnItem, _languageKkItem });
-
-        _showLogsItem = new ToolStripMenuItem(strings.EventLog, null, (s, e) => ShowLogForm());
-        _restoreSettingsItem = new ToolStripMenuItem(strings.RestoreSettings, null, OnRestoreSettings);
         _exitItem = new ToolStripMenuItem(strings.Exit, null, (s, e) => ExitApplication());
 
         _contextMenu.Items.Add(_headerMenuItem);
@@ -133,19 +91,13 @@ public class TrayApplicationContext : ApplicationContext
         {
             _contextMenu.Items.Add(_elevateItem);
         }
+        _contextMenu.Items.Add(_dashboardMenuItem);
+        _contextMenu.Items.Add(new ToolStripSeparator());
         _contextMenu.Items.Add(_statusMenuItem);
         _contextMenu.Items.Add(_primaryAdapterMenuItem);
         _contextMenu.Items.Add(new ToolStripSeparator());
         _contextMenu.Items.Add(_optimizeNowItem);
         _contextMenu.Items.Add(_toggleMonitoringMenuItem);
-        _contextMenu.Items.Add(new ToolStripSeparator());
-        _contextMenu.Items.Add(_startupMenuItem);
-        _contextMenu.Items.Add(_gamingModeMenuItem);
-        _contextMenu.Items.Add(_restoreOnExitMenuItem);
-        _contextMenu.Items.Add(_notificationsMenuItem);
-        _contextMenu.Items.Add(_languageSubmenu);
-        _contextMenu.Items.Add(_showLogsItem);
-        _contextMenu.Items.Add(_restoreSettingsItem);
         _contextMenu.Items.Add(new ToolStripSeparator());
         _contextMenu.Items.Add(_exitItem);
 
@@ -157,11 +109,17 @@ public class TrayApplicationContext : ApplicationContext
             Icon = GetShieldIcon("green")
         };
 
-        _notifyIcon.DoubleClick += (s, e) => ShowLogForm();
+        _notifyIcon.DoubleClick += (s, e) => ShowDashboard();
+        _notifyIcon.MouseClick += (s, e) =>
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                ShowDashboard();
+            }
+        };
 
         // Subscribe to language changes for instant UI refresh
         LocalizationService.LanguageChanged += UpdateLocalization;
-        UpdateLanguageMenuItems();
 
         // Subscribe to monitor events
         _monitor.PlanEvaluated += OnPlanEvaluated;
@@ -182,26 +140,12 @@ public class TrayApplicationContext : ApplicationContext
         _monitor.Start();
     }
 
-    private void SwitchLanguage(AppLanguage language)
-    {
-        _config.Language = language.ToCode();
-        _config.Save();
-        LocalizationService.SetLanguage(language);
-    }
-
-    private void UpdateLanguageMenuItems()
-    {
-        var current = LocalizationService.CurrentLanguage;
-        _languageRuItem.Checked = current == AppLanguage.Ru;
-        _languageEnItem.Checked = current == AppLanguage.En;
-        _languageKkItem.Checked = current == AppLanguage.Kk;
-    }
-
     private void UpdateLocalization()
     {
         var s = LocalizationService.Strings;
         bool isAdmin = Program.IsAdministrator();
 
+        _dashboardMenuItem.Text = s.OpenDashboard;
         _headerMenuItem.Text = isAdmin ? s.HeaderAdmin : s.HeaderNoAdmin;
         if (_elevateItem != null)
         {
@@ -210,16 +154,7 @@ public class TrayApplicationContext : ApplicationContext
 
         _optimizeNowItem.Text = s.OptimizeNow;
         _toggleMonitoringMenuItem.Text = _monitor.IsRunning ? s.PauseProtection : s.ResumeProtection;
-        _startupMenuItem.Text = s.StartupWithWindows;
-        _gamingModeMenuItem.Text = s.GamingMode;
-        _restoreOnExitMenuItem.Text = s.RestoreOnExit;
-        _notificationsMenuItem.Text = s.Notifications;
-        _languageSubmenu.Text = s.LanguageSubmenu;
-        _showLogsItem.Text = s.EventLog;
-        _restoreSettingsItem.Text = s.RestoreSettings;
         _exitItem.Text = s.Exit;
-
-        UpdateLanguageMenuItems();
 
         // Update current status menu items
         if (!_monitor.IsRunning)
@@ -234,14 +169,6 @@ public class TrayApplicationContext : ApplicationContext
         {
             _statusMenuItem.Text = s.StatusInitializing;
             _primaryAdapterMenuItem.Text = s.PrimaryChannelDetecting;
-        }
-
-        // Update opened log window if currently active
-        if (_logForm != null && !_logForm.IsDisposed)
-        {
-            _logForm.Text = GetLogWindowTitle(s);
-            if (_btnOptimizeLog != null) _btnOptimizeLog.Text = s.OptimizeNow;
-            if (_btnClearLog != null) _btnClearLog.Text = s.Clear;
         }
     }
 
@@ -259,114 +186,41 @@ public class TrayApplicationContext : ApplicationContext
 
     private void OnStatusChanged(bool isRunning)
     {
-        var s = LocalizationService.Strings;
-        _toggleMonitoringMenuItem.Text = isRunning ? s.PauseProtection : s.ResumeProtection;
-
-        if (!isRunning)
+        SafeInvoke(() =>
         {
-            _notifyIcon.Icon = GetShieldIcon("gray");
-            _statusMenuItem.Text = s.StatusPaused;
-        }
+            var s = LocalizationService.Strings;
+            _toggleMonitoringMenuItem.Text = isRunning ? s.PauseProtection : s.ResumeProtection;
+            _dashboardWindow?.UpdateOverviewState(_lastPlan);
+
+            if (!isRunning)
+            {
+                _notifyIcon.Icon = GetShieldIcon("gray");
+                _statusMenuItem.Text = s.StatusPaused;
+            }
+        });
     }
 
-    private void OnToggleStartup(object? sender, EventArgs e)
+    private static void SafeInvoke(Action action)
     {
-        var s = LocalizationService.Strings;
-        if (_startupMenuItem.Checked)
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess())
         {
-            bool success = StartupManager.EnableStartup();
-            _startupMenuItem.Checked = success;
-            AppendLog(success ? s.StartupTaskSuccess : s.StartupTaskFail);
+            dispatcher.InvokeAsync(action);
         }
         else
         {
-            bool success = StartupManager.DisableStartup();
-            _startupMenuItem.Checked = !success;
-            AppendLog(success ? s.StartupTaskRemoveSuccess : s.StartupTaskRemoveFail);
-        }
-    }
-
-    private void OnToggleGamingMode(object? sender, EventArgs e)
-    {
-        var s = LocalizationService.Strings;
-        _config.EnableWlanOptimizer = _gamingModeMenuItem.Checked;
-        _config.Save();
-
-        var res = WlanOptimizerService.SetGamingMode(_config.EnableWlanOptimizer);
-        foreach (var log in res.Logs)
-        {
-            AppendLog(log);
-        }
-
-        if (_config.ShowNotifications)
-        {
-            string msg = _config.EnableWlanOptimizer
-                ? s.GamingModeEnabledToast
-                : s.GamingModeDisabledToast;
-
-            _notifyIcon.ShowBalloonTip(3000, s.AppTitle, msg, ToolTipIcon.Info);
-        }
-    }
-
-    private void OnToggleNotifications(object? sender, EventArgs e)
-    {
-        var s = LocalizationService.Strings;
-        _config.ShowNotifications = _notificationsMenuItem.Checked;
-        _config.Save();
-
-        string state = _config.ShowNotifications ? s.NotificationsEnabled : s.NotificationsDisabled;
-        AppendLog(string.Format(s.NotificationsToggledFormat, state));
-    }
-
-    private void OnToggleRestoreOnExit(object? sender, EventArgs e)
-    {
-        _config.RestoreOnExit = _restoreOnExitMenuItem.Checked;
-        _config.Save();
-        AppendLog($"[*] Restore settings on exit: {_config.RestoreOnExit}");
-    }
-
-    private void OnRestoreSettings(object? sender, EventArgs e)
-    {
-        var s = LocalizationService.Strings;
-
-        if (!BackupService.BackupExists())
-        {
-            AppendLog(s.RestoreNoBackup);
-            if (_config.ShowNotifications)
-            {
-                _notifyIcon.ShowBalloonTip(3000, s.AppTitle, s.RestoreNoBackup, ToolTipIcon.Warning);
-            }
-            return;
-        }
-
-        var confirmResult = MessageBox.Show(
-            s.RestoreConfirmMessage,
-            s.AppTitle,
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question);
-
-        if (confirmResult != DialogResult.Yes) return;
-
-        AppendLog(s.RestoreStarting);
-        var logs = BackupService.RestoreFromBackup();
-        foreach (var log in logs)
-        {
-            AppendLog(log);
-        }
-
-        WlanOptimizerService.RestoreDefaultScan();
-        AppendLog(s.RestoreComplete);
-
-        if (_config.ShowNotifications)
-        {
-            _notifyIcon.ShowBalloonTip(3000, s.AppTitle, s.RestoreComplete, ToolTipIcon.Info);
+            action();
         }
     }
 
     private void OnPlanEvaluated(OptimizationPlan plan)
     {
-        _lastPlan = plan;
-        RenderPlanStatus(plan);
+        SafeInvoke(() =>
+        {
+            _lastPlan = plan;
+            _dashboardWindow?.UpdateOverviewState(plan);
+            RenderPlanStatus(plan);
+        });
     }
 
     private void RenderPlanStatus(OptimizationPlan plan)
@@ -396,100 +250,49 @@ public class TrayApplicationContext : ApplicationContext
 
     private void OnOptimizationApplied(OptimizationResult result)
     {
-        var s = LocalizationService.Strings;
-        _notifyIcon.Icon = GetShieldIcon("green");
-        if (_config.ShowNotifications && result.ActionsApplied > 0)
+        SafeInvoke(() =>
         {
-            _notifyIcon.ShowBalloonTip(
-                3000,
-                s.AppTitle,
-                string.Format(s.BalloonOptimizedFormat, result.ActionsApplied),
-                ToolTipIcon.Info
-            );
-        }
+            var s = LocalizationService.Strings;
+            _notifyIcon.Icon = GetShieldIcon("green");
+            if (_config.ShowNotifications && result.ActionsApplied > 0)
+            {
+                _notifyIcon.ShowBalloonTip(
+                    3000,
+                    s.AppTitle,
+                    string.Format(s.BalloonOptimizedFormat, result.ActionsApplied),
+                    ToolTipIcon.Info
+                );
+            }
+        });
     }
 
     private void AppendLog(string message)
     {
-        string entry = $"[{DateTime.Now:HH:mm:ss}] {message}";
-        if (_logTextBox != null && !_logTextBox.IsDisposed)
+        LogService.Log(message);
+    }
+
+    public void ShowDashboard(int navIndex = 0)
+    {
+        SafeInvoke(() =>
         {
-            _logTextBox.BeginInvoke(new Action(() =>
+            if (_dashboardWindow == null)
             {
-                _logTextBox.AppendText(entry + Environment.NewLine);
-            }));
-        }
-    }
+                _dashboardWindow = new DashboardWindow(_config, _engine, _monitor, AppendLog);
+                _dashboardWindow.Closed += (s, e) => _dashboardWindow = null;
+                if (_lastPlan != null)
+                {
+                    _dashboardWindow.UpdateOverviewState(_lastPlan);
+                }
+            }
 
-    private void ShowLogForm()
-    {
-        if (_logForm != null && !_logForm.IsDisposed)
-        {
-            _logForm.BringToFront();
-            _logForm.Focus();
-            return;
-        }
-
-        var s = LocalizationService.Strings;
-
-        _logForm = new Form
-        {
-            Text = GetLogWindowTitle(s),
-            Size = new Size(680, 480),
-            StartPosition = FormStartPosition.CenterScreen,
-            BackColor = Color.FromArgb(30, 30, 30),
-            ForeColor = Color.White
-        };
-
-        _logTextBox = new TextBox
-        {
-            Multiline = true,
-            ReadOnly = true,
-            ScrollBars = ScrollBars.Vertical,
-            Dock = DockStyle.Fill,
-            BackColor = Color.FromArgb(20, 20, 20),
-            ForeColor = Color.FromArgb(220, 220, 220),
-            Font = new Font("Consolas", 9.5f)
-        };
-
-        var panel = new Panel { Dock = DockStyle.Bottom, Height = 45 };
-        _btnOptimizeLog = new Button
-        {
-            Text = s.OptimizeNow,
-            Location = new Point(10, 8),
-            Size = new Size(180, 30),
-            BackColor = Color.FromArgb(50, 50, 50),
-            FlatStyle = FlatStyle.Flat
-        };
-        _btnOptimizeLog.Click += (s, e) => _monitor.TriggerManualCheck();
-
-        _btnClearLog = new Button
-        {
-            Text = s.Clear,
-            Location = new Point(200, 8),
-            Size = new Size(90, 30),
-            BackColor = Color.FromArgb(50, 50, 50),
-            FlatStyle = FlatStyle.Flat
-        };
-        _btnClearLog.Click += (s, e) => _logTextBox.Clear();
-
-        panel.Controls.Add(_btnOptimizeLog);
-        panel.Controls.Add(_btnClearLog);
-
-        _logForm.Controls.Add(_logTextBox);
-        _logForm.Controls.Add(panel);
-
-        _logForm.Show();
-        AppendLog(s.LogOpened);
-    }
-
-    private static string GetLogWindowTitle(LocalizedStrings strings)
-    {
-        if (strings.LogWindowTitle.StartsWith("PingArmor -", StringComparison.Ordinal))
-        {
-            return strings.LogWindowTitle.Replace("PingArmor -", $"PingArmor v{AppVersion.Current} -");
-        }
-        return $"PingArmor v{AppVersion.Current} - {strings.LogWindowTitle}";
+            _dashboardWindow.SelectNav(navIndex);
+            _dashboardWindow.Show();
+            if (_dashboardWindow.WindowState == System.Windows.WindowState.Minimized)
+            {
+                _dashboardWindow.WindowState = System.Windows.WindowState.Normal;
+            }
+            _dashboardWindow.Activate();
+        });
     }
 
     private void ExitApplication()
@@ -512,6 +315,21 @@ public class TrayApplicationContext : ApplicationContext
         _notifyIcon.Dispose();
 
         DisposeShieldIcons();
+        if (_dashboardWindow != null)
+        {
+            _dashboardWindow.Close();
+            _dashboardWindow = null;
+        }
+
+        try
+        {
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            {
+                System.Windows.Application.Current.Shutdown();
+            });
+        }
+        catch { }
+
         Application.Exit();
     }
 
@@ -532,12 +350,15 @@ public class TrayApplicationContext : ApplicationContext
 
     private void DisposeShieldIcons()
     {
-        foreach (var pair in _shieldIcons.Values)
+        foreach (var tuple in _shieldIcons.Values)
         {
             try
             {
-                pair.Icon.Dispose();
-                DestroyIcon(pair.Handle);
+                tuple.Icon.Dispose();
+                if (tuple.Handle != IntPtr.Zero)
+                {
+                    DestroyIcon(tuple.Handle);
+                }
             }
             catch { }
         }
@@ -546,38 +367,29 @@ public class TrayApplicationContext : ApplicationContext
 
     private static (Icon Icon, IntPtr Handle) CreateShieldIcon(Color color)
     {
-        using var bitmap = new Bitmap(32, 32);
-        using (var g = Graphics.FromImage(bitmap))
+        using var bmp = new Bitmap(16, 16);
+        using (var g = Graphics.FromImage(bmp))
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(Color.Transparent);
 
+            using var path = new GraphicsPath();
+            path.AddLine(2, 2, 14, 2);
+            path.AddLine(14, 2, 14, 8);
+            path.AddBezier(14, 8, 14, 13, 8, 15, 8, 15);
+            path.AddBezier(8, 15, 2, 13, 2, 8, 2, 8);
+            path.CloseFigure();
+
             using var brush = new SolidBrush(color);
-            var points = new[]
-            {
-                new Point(16, 2),
-                new Point(29, 6),
-                new Point(29, 18),
-                new Point(16, 30),
-                new Point(3, 18),
-                new Point(3, 6)
-            };
-            g.FillPolygon(brush, points);
+            g.FillPath(brush, path);
 
-            using var pen = new Pen(Color.White, 2f);
-            g.DrawPolygon(pen, points);
-
-            using var checkPen = new Pen(Color.White, 2.5f);
-            g.DrawLines(checkPen, new[]
-            {
-                new Point(10, 16),
-                new Point(14, 21),
-                new Point(22, 11)
-            });
+            using var pen = new Pen(Color.FromArgb(200, 255, 255, 255), 1.0f);
+            g.DrawPath(pen, path);
         }
 
-        IntPtr hIcon = bitmap.GetHicon();
-        return (Icon.FromHandle(hIcon), hIcon);
+        IntPtr hIcon = bmp.GetHicon();
+        var icon = (Icon)Icon.FromHandle(hIcon).Clone();
+        return (icon, hIcon);
     }
 
     #endregion

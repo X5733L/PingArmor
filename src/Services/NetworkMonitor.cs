@@ -63,7 +63,7 @@ public class NetworkMonitor : IDisposable
             {
                 if (BackupService.CreateBackupIfNotExists())
                 {
-                    LogMessage?.Invoke("[+] System settings backup created (backup.json). Use --restore to revert changes.");
+                    LogMessage?.Invoke("[+] System settings backup created (backups/backup.json). Use --restore to revert changes.");
                 }
             }
             catch (Exception ex)

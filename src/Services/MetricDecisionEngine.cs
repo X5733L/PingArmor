@@ -28,6 +28,13 @@ public class MetricDecisionEngine
             return plan;
         }
 
+        if (!config.EnableMetricOptimization)
+        {
+            plan.NeedsOptimization = false;
+            plan.Summary = $"Metric optimization disabled. Primary: '{primaryAdapter.Name}' (metric {primaryAdapter.CurrentIPv4Metric})";
+            return plan;
+        }
+
         int primaryTargetMetric = primaryAdapter.Type == AdapterType.PhysicalEthernet
             ? config.PrimaryEthernetMetric
             : config.PrimaryWifiMetric;

@@ -9,6 +9,7 @@ namespace PingArmor.Config;
 public class AppConfig
 {
     public int CheckIntervalSeconds { get; set; } = 30;
+    public bool EnableMetricOptimization { get; set; } = true;
     public int PrimaryEthernetMetric { get; set; } = 5;
     public int PrimaryWifiMetric { get; set; } = 10;
     public int VirtualAdapterMetric { get; set; } = 500;
@@ -32,15 +33,44 @@ public class AppConfig
     public string Language { get; set; } = "ru";
     public List<string> ExcludeAdapters { get; set; } = new();
 
-    public static string GetDefaultConfigPath()
+    public static string GetDefaultConfigDirectory()
     {
         string baseDir = AppContext.BaseDirectory;
-        return Path.Combine(baseDir, "config.json");
+        return Path.Combine(baseDir, "configs");
+    }
+
+    public static string GetDefaultConfigPath()
+    {
+        return Path.Combine(GetDefaultConfigDirectory(), "config.json");
     }
 
     public static AppConfig Load(string? path = null)
     {
-        path ??= GetDefaultConfigPath();
+        if (path == null)
+        {
+            path = GetDefaultConfigPath();
+            if (!File.Exists(path))
+            {
+                string legacyPath = Path.Combine(AppContext.BaseDirectory, "config.json");
+                if (File.Exists(legacyPath))
+                {
+                    try
+                    {
+                        string dir = Path.GetDirectoryName(path)!;
+                        if (!Directory.Exists(dir))
+                        {
+                            Directory.CreateDirectory(dir);
+                        }
+                        File.Move(legacyPath, path, overwrite: true);
+                    }
+                    catch
+                    {
+                        path = legacyPath;
+                    }
+                }
+            }
+        }
+
         AppConfig config;
         if (!File.Exists(path))
         {
@@ -78,11 +108,28 @@ public class AppConfig
     public void Save(string? path = null)
     {
         path ??= GetDefaultConfigPath();
+        string? dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
         var options = new JsonSerializerOptions
         {
             WriteIndented = true
         };
         string json = JsonSerializer.Serialize(this, options);
-        File.WriteAllText(path, json);
+
+        try
+        {
+            File.WriteAllText(path, json);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            string localDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PingArmor", "configs");
+            Directory.CreateDirectory(localDir);
+            string localPath = Path.Combine(localDir, "config.json");
+            File.WriteAllText(localPath, json);
+        }
     }
 }

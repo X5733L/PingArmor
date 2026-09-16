@@ -21,6 +21,14 @@ public static class Program
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern bool AttachConsole(int dwProcessId);
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr GetStdHandle(int nStdHandle);
+
+    private const int ATTACH_PARENT_PROCESS = -1;
+    private const int STD_OUTPUT_HANDLE = -11;
     private const int SW_HIDE = 0;
 
     public static bool IsAdministrator()
@@ -69,9 +77,31 @@ public static class Program
 
         var config = AppConfig.Load();
         LocalizationService.SetLanguage(config.Language);
+        _ = LogService.LogFilePath;
 
         // Process --lang / -l argument
         string[] cleanArgs = ProcessLanguageArg(args, config);
+
+        // If run with CLI command-line arguments, attach to parent console so output is visible
+        if (cleanArgs.Length > 0 && !cleanArgs[0].StartsWith("-g", StringComparison.OrdinalIgnoreCase) &&
+            !cleanArgs[0].StartsWith("--gui", StringComparison.OrdinalIgnoreCase) &&
+            !cleanArgs[0].StartsWith("--dashboard", StringComparison.OrdinalIgnoreCase) &&
+            !cleanArgs[0].StartsWith("-m", StringComparison.OrdinalIgnoreCase) &&
+            !cleanArgs[0].StartsWith("--minimized", StringComparison.OrdinalIgnoreCase) &&
+            !cleanArgs[0].StartsWith("--autostart", StringComparison.OrdinalIgnoreCase))
+        {
+            if (AttachConsole(ATTACH_PARENT_PROCESS))
+            {
+                var handle = GetStdHandle(STD_OUTPUT_HANDLE);
+                if (handle != IntPtr.Zero && handle != new IntPtr(-1))
+                {
+                    var stream = new FileStream(new Microsoft.Win32.SafeHandles.SafeFileHandle(handle, false), FileAccess.Write);
+                    var writer = new StreamWriter(stream, System.Text.Encoding.UTF8) { AutoFlush = true };
+                    Console.SetOut(writer);
+                    Console.SetError(writer);
+                }
+            }
+        }
 
         // For operations requiring administrative privileges, request elevation during interactive launch
         if (cleanArgs.Length == 0 || RequiresElevation(cleanArgs[0]))
@@ -96,10 +126,25 @@ public static class Program
 
         if (cleanArgs.Length > 0)
         {
+            if (cleanArgs[0].Equals("--gui", StringComparison.OrdinalIgnoreCase) ||
+                cleanArgs[0].Equals("-g", StringComparison.OrdinalIgnoreCase) ||
+                cleanArgs[0].Equals("--dashboard", StringComparison.OrdinalIgnoreCase))
+            {
+                return RunTrayApplication(config, engine, openDashboard: true);
+            }
+
+            if (cleanArgs[0].Equals("--minimized", StringComparison.OrdinalIgnoreCase) ||
+                cleanArgs[0].Equals("-m", StringComparison.OrdinalIgnoreCase) ||
+                cleanArgs[0].Equals("--autostart", StringComparison.OrdinalIgnoreCase))
+            {
+                return RunTrayApplication(config, engine, openDashboard: false);
+            }
+
             return ExecuteCliCommand(cleanArgs[0], engine, config);
         }
 
-        return RunTrayApplication(config, engine);
+        // Interactive double-click launch shows the Dashboard window
+        return RunTrayApplication(config, engine, openDashboard: true);
     }
 
     private static string[] ProcessLanguageArg(string[] args, AppConfig config)
@@ -230,9 +275,10 @@ public static class Program
         Console.WriteLine($"  PingArmor.exe --backup (-b)       {s.CliHelpBackup}");
         Console.WriteLine($"  PingArmor.exe --restore           {s.CliHelpRestore}");
         Console.WriteLine($"  PingArmor.exe --lang <ru|en|kk>   {s.CliHelpLang}");
+        Console.WriteLine($"  PingArmor.exe --gui (-g)          {s.OpenDashboard}");
     }
 
-    private static int RunTrayApplication(AppConfig config, NetworkEngine engine)
+    private static int RunTrayApplication(AppConfig config, NetworkEngine engine, bool openDashboard = false)
     {
         var s = LocalizationService.Strings;
 
@@ -260,10 +306,25 @@ public static class Program
 
         SetupProcessExitHandler(config);
 
+        var wpfApp = System.Windows.Application.Current as App;
+        if (wpfApp == null)
+        {
+            wpfApp = new App
+            {
+                ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown
+            };
+            wpfApp.InitializeComponent();
+        }
+
         using var monitor = new NetworkMonitor(engine, config);
         using var trayContext = new TrayApplicationContext(config, engine, monitor);
 
-        Application.Run(trayContext);
+        if (openDashboard)
+        {
+            trayContext.ShowDashboard();
+        }
+
+        wpfApp.Run();
         return 0;
     }
 

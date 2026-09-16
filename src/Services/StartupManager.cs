@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 
@@ -19,7 +19,7 @@ public static class StartupManager
             return false;
         }
 
-        return RunSchtasks($"/create /tn \"{TaskName}\" /tr \"\\\"{exePath}\\\"\" /sc onlogon /rl highest /f", 3000);
+        return RunSchtasks($"/create /tn \"{TaskName}\" /tr \"\\\"{exePath}\\\" --minimized\" /sc onlogon /rl highest /f", 3000);
     }
 
     public static bool DisableStartup() =>

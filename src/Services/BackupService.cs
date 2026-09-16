@@ -31,12 +31,49 @@ public static class BackupService
     public static bool HasRestoredOnExit { get; set; }
 
     /// <summary>
-    /// Returns the default path for the backup file (next to config.json).
+    /// Returns the default directory for backups.
+    /// </summary>
+    public static string GetDefaultBackupDirectory()
+    {
+        string baseDir = AppContext.BaseDirectory;
+        return Path.Combine(baseDir, "backups");
+    }
+
+    /// <summary>
+    /// Returns the default path for the backup file (in backups/backup.json).
     /// </summary>
     public static string GetDefaultBackupPath()
     {
-        string baseDir = AppContext.BaseDirectory;
-        return Path.Combine(baseDir, "backup.json");
+        return Path.Combine(GetDefaultBackupDirectory(), "backup.json");
+    }
+
+    internal static string ResolveBackupPath(string? path)
+    {
+        if (path != null) return path;
+
+        string defaultPath = GetDefaultBackupPath();
+        if (!File.Exists(defaultPath))
+        {
+            string legacyPath = Path.Combine(AppContext.BaseDirectory, "backup.json");
+            if (File.Exists(legacyPath))
+            {
+                try
+                {
+                    string dir = GetDefaultBackupDirectory();
+                    if (!Directory.Exists(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+                    File.Move(legacyPath, defaultPath, overwrite: true);
+                    return defaultPath;
+                }
+                catch
+                {
+                    return legacyPath;
+                }
+            }
+        }
+        return defaultPath;
     }
 
     /// <summary>
@@ -46,7 +83,7 @@ public static class BackupService
     /// <returns>True if a new backup was created, false if one already exists.</returns>
     public static bool CreateBackupIfNotExists(string? path = null)
     {
-        path ??= GetDefaultBackupPath();
+        path = ResolveBackupPath(path);
 
         lock (_lock)
         {
@@ -66,7 +103,7 @@ public static class BackupService
     /// </summary>
     public static void CreateBackup(string? path = null)
     {
-        path ??= GetDefaultBackupPath();
+        path = ResolveBackupPath(path);
 
         lock (_lock)
         {
@@ -81,7 +118,7 @@ public static class BackupService
     /// <returns>The backup snapshot, or null if no backup file exists.</returns>
     public static NetworkBackupSnapshot? LoadBackup(string? path = null)
     {
-        path ??= GetDefaultBackupPath();
+        path = ResolveBackupPath(path);
 
         if (!File.Exists(path))
         {
@@ -107,8 +144,28 @@ public static class BackupService
     /// </summary>
     public static bool BackupExists(string? path = null)
     {
-        path ??= GetDefaultBackupPath();
+        path = ResolveBackupPath(path);
         return File.Exists(path);
+    }
+
+    /// <summary>
+    /// Gets summary info about the existing backup file.
+    /// </summary>
+    public static BackupInfo GetBackupInfo(string? path = null)
+    {
+        path = ResolveBackupPath(path);
+        if (!File.Exists(path))
+        {
+            return new BackupInfo(false, null, 0, null, path);
+        }
+
+        var snapshot = LoadBackup(path);
+        if (snapshot == null)
+        {
+            return new BackupInfo(true, null, 0, null, path);
+        }
+
+        return new BackupInfo(true, snapshot.CreatedAt, snapshot.Adapters?.Count ?? 0, snapshot.MachineName, path);
     }
 
     /// <summary>
@@ -119,7 +176,7 @@ public static class BackupService
     /// <returns>List of log messages describing what was restored.</returns>
     public static List<string> RestoreFromBackup(string? path = null, bool deleteBackupAfterRestore = false)
     {
-        path ??= GetDefaultBackupPath();
+        path = ResolveBackupPath(path);
         var logs = new List<string>();
 
         var snapshot = LoadBackup(path);
@@ -227,7 +284,7 @@ public static class BackupService
         {
             if (DeleteBackup(path))
             {
-                logs.Add("[+] Backup file deleted after successful restoration (backup.json).");
+                logs.Add("[+] Backup file deleted after successful restoration (backups/backup.json).");
             }
         }
 
@@ -239,16 +296,133 @@ public static class BackupService
     /// </summary>
     public static bool DeleteBackup(string? path = null)
     {
-        path ??= GetDefaultBackupPath();
+        path = ResolveBackupPath(path);
+        bool deleted = false;
         try
         {
             if (File.Exists(path))
             {
                 File.Delete(path);
-                return true;
+                deleted = true;
+            }
+            string legacyPath = Path.Combine(AppContext.BaseDirectory, "backup.json");
+            if (File.Exists(legacyPath))
+            {
+                File.Delete(legacyPath);
+                deleted = true;
             }
         }
         catch { }
+        return deleted;
+    }
+
+    /// <summary>
+    /// Performs a full reset of the Windows network stack (Winsock, TCP/IP, AutomaticMetric, IPv6, DNS cache).
+    /// </summary>
+    public static List<string> ResetWindowsNetworkStack()
+    {
+        var logs = new List<string>
+        {
+            "[*] Executing Windows network stack reset (Factory Defaults)..."
+        };
+
+        try
+        {
+            RunProcess("netsh.exe", "winsock reset");
+            logs.Add("[+] Winsock catalog reset completed (netsh winsock reset)");
+        }
+        catch (Exception ex)
+        {
+            logs.Add($"[-] Winsock reset error: {ex.Message}");
+        }
+
+        try
+        {
+            RunProcess("netsh.exe", "int ip reset");
+            logs.Add("[+] TCP/IP stack reset completed (netsh int ip reset)");
+        }
+        catch (Exception ex)
+        {
+            logs.Add($"[-] TCP/IP reset error: {ex.Message}");
+        }
+
+        try
+        {
+            // Restore AutomaticMetric on all interfaces
+            RunProcess("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -Command \"Get-NetIPInterface | Set-NetIPInterface -AutomaticMetric Enabled -ErrorAction SilentlyContinue\"");
+            logs.Add("[+] AutomaticMetric restored to Enabled on all network interfaces");
+        }
+        catch (Exception ex)
+        {
+            logs.Add($"[-] Failed to restore AutomaticMetric: {ex.Message}");
+        }
+
+        try
+        {
+            // Re-enable IPv6 on all network adapters
+            RunProcess("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -Command \"Enable-NetAdapterBinding -Name * -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue\"");
+            logs.Add("[+] IPv6 re-enabled on all network adapters");
+        }
+        catch (Exception ex)
+        {
+            logs.Add($"[-] Failed to re-enable IPv6: {ex.Message}");
+        }
+
+        try
+        {
+            // Restore DNS registry policies to Windows default
+            using var dnsKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient", true);
+            dnsKey?.DeleteValue("DisableSmartNameResolution", throwOnMissingValue: false);
+
+            using var wpadKey = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings", true);
+            wpadKey?.SetValue("AutoDetect", 1, RegistryValueKind.DWord);
+
+            logs.Add("[+] Registry DNS/WPAD policies reset to system defaults");
+        }
+        catch (Exception ex)
+        {
+            logs.Add($"[-] Failed to reset registry policies: {ex.Message}");
+        }
+
+        try
+        {
+            DnsHelper.FlushDnsCache();
+            logs.Add("[+] DNS resolver cache flushed");
+        }
+        catch { }
+
+        logs.Add("[+] Windows network stack reset complete. A system restart is recommended.");
+        return logs;
+    }
+
+    /// <summary>
+    /// Opens the native Windows Network Reset settings applet.
+    /// On Windows 11 (Build >= 22000), ms-settings:network-reset is deprecated and redirects to Home,
+    /// so ms-settings:network-advancedsettings is used to directly access the page containing Network Reset.
+    /// </summary>
+    public static bool OpenWindowsNetworkResetSettings()
+    {
+        string[] targetUris = Environment.OSVersion.Version.Build >= 22000
+            ? new[] { "ms-settings:network-advancedsettings", "ms-settings:network-reset", "ms-settings:network" }
+            : new[] { "ms-settings:network-reset", "ms-settings:network-advancedsettings", "ms-settings:network" };
+
+        foreach (var uri in targetUris)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = uri,
+                    UseShellExecute = true
+                };
+                Process.Start(psi);
+                return true;
+            }
+            catch
+            {
+                // Try next URI candidate
+            }
+        }
         return false;
     }
 
@@ -511,6 +685,11 @@ public static class BackupService
 
     private static void SaveSnapshot(NetworkBackupSnapshot snapshot, string path)
     {
+        string? dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
         string json = JsonSerializer.Serialize(snapshot, _jsonOptions);
         File.WriteAllText(path, json);
     }

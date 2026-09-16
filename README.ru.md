@@ -54,9 +54,9 @@
 
 ### 1. Скачивание готовой сборки
 Загрузите последнюю готовую версию из раздела **[GitHub Releases](../../releases)**:
-- **`PingArmor-v*-win-x64.zip`**: Полностью автономная версия (~50 МБ). Все компоненты .NET 10 встроены в один исполняемый файл. Работает на любой Windows 10/11 без установки среды .NET и SDK.
+- **`PingArmor-v*-win-x64.zip`**: Полностью автономный архив. Внутри архива находится папка `PingArmor` с исполняемым файлом и всеми необходимыми библиотеками WPF. Работает на любой Windows 10/11 без установки среды .NET и SDK.
 
-Просто распакуйте архив и запустите `PingArmor.exe`!
+Просто распакуйте архив и запустите `PingArmor.exe` из папки `PingArmor`!
 
 ### 2. Запуск напрямую из исходников
 Если на компьютере установлен [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0):
@@ -124,9 +124,9 @@ PingArmor.exe --lang kk    # Қазақша
 
 ---
 
-## ⚙️ Конфигурация (`config.json`)
+## ⚙️ Конфигурация (`configs/config.json`)
 
-При старте программа создает файл `config.json` рядом с исполняемым файлом:
+При старте программа создает файл конфигурации в подпапке `configs/config.json` (резервные копии настроек сохраняются в `backups/backup.json`, а журнал работы — в `logs/pingarmor.log`):
 
 ```json
 {
@@ -178,6 +178,9 @@ dotnet publish src/PingArmor.csproj -c Release -r win-x64 --self-contained true 
 
 ---
 
-## 📄 Лицензия
+## 📄 Лицензия и благодарности
 
 Проект распространяется под открытой лицензией [MIT License](LICENSE).
+
+### Сторонняя графика
+- Иконка приложения: [Shield icon](https://www.flaticon.com/authors/magnific), автор [Magnific](https://www.flaticon.com/authors/magnific) ([Flaticon](https://www.flaticon.com/)).

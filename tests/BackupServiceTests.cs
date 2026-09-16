@@ -200,6 +200,64 @@ public class BackupServiceTests : IDisposable
         Assert.NotNull(loaded.Registry);
     }
 
+    [Fact]
+    public void GetBackupInfo_WhenNoFile_ReturnsExistsFalse()
+    {
+        string nonExistentPath = Path.Combine(Path.GetTempPath(), $"no_backup_{Guid.NewGuid()}.json");
+        var info = BackupService.GetBackupInfo(nonExistentPath);
+
+        Assert.False(info.Exists);
+        Assert.Null(info.CreatedAt);
+        Assert.Equal(0, info.AdapterCount);
+        Assert.Null(info.MachineName);
+        Assert.Equal(nonExistentPath, info.BackupPath);
+    }
+
+    [Fact]
+    public void GetBackupInfo_WhenFileExists_ReturnsValidInfo()
+    {
+        BackupService.CreateBackup(_tempBackupPath);
+        var info = BackupService.GetBackupInfo(_tempBackupPath);
+
+        Assert.True(info.Exists);
+        Assert.NotNull(info.CreatedAt);
+        Assert.Equal(Environment.MachineName, info.MachineName);
+        Assert.Equal(_tempBackupPath, info.BackupPath);
+    }
+
+    [Fact]
+    public void DefaultBackupPath_ShouldBeInBackupsDirectory()
+    {
+        string dir = BackupService.GetDefaultBackupDirectory();
+        string path = BackupService.GetDefaultBackupPath();
+
+        Assert.EndsWith("backups", dir);
+        Assert.Equal(Path.Combine(dir, "backup.json"), path);
+    }
+
+    [Fact]
+    public void CreateBackup_WhenDirectoryDoesNotExist_CreatesDirectoryAndSaves()
+    {
+        string subDir = Path.Combine(Path.GetTempPath(), $"backup_sub_{Guid.NewGuid()}");
+        string customPath = Path.Combine(subDir, "backup.json");
+
+        try
+        {
+            BackupService.CreateBackup(customPath);
+
+            Assert.True(File.Exists(customPath));
+            var loaded = BackupService.LoadBackup(customPath);
+            Assert.NotNull(loaded);
+        }
+        finally
+        {
+            if (Directory.Exists(subDir))
+            {
+                Directory.Delete(subDir, recursive: true);
+            }
+        }
+    }
+
     public void Dispose()
     {
         try

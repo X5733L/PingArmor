@@ -278,7 +278,7 @@ public class NetworkEngine : INetworkEngine
             bool backupCreated = BackupService.CreateBackupIfNotExists();
             if (backupCreated)
             {
-                result.Logs.Add("[+] System settings backup created (backup.json). Use --restore to revert changes.");
+                result.Logs.Add("[+] System settings backup created (backups/backup.json). Use --restore to revert changes.");
             }
         }
         catch (Exception ex)

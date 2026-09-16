@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using PingArmor.Config;
@@ -55,6 +55,40 @@ public class ConfigTests : IDisposable
         Assert.Equal("en", loaded.Language);
         Assert.Contains("Tailscale", loaded.ExcludeAdapters);
         Assert.Contains("Hyper-V", loaded.ExcludeAdapters);
+    }
+
+    [Fact]
+    public void DefaultConfigPath_ShouldBeInConfigsDirectory()
+    {
+        string dir = AppConfig.GetDefaultConfigDirectory();
+        string path = AppConfig.GetDefaultConfigPath();
+
+        Assert.EndsWith("configs", dir);
+        Assert.Equal(Path.Combine(dir, "config.json"), path);
+    }
+
+    [Fact]
+    public void Save_WhenDirectoryDoesNotExist_CreatesDirectoryAndSaves()
+    {
+        string subDir = Path.Combine(Path.GetTempPath(), $"sub_{Guid.NewGuid()}");
+        string customPath = Path.Combine(subDir, "config.json");
+
+        try
+        {
+            var config = new AppConfig { CheckIntervalSeconds = 42 };
+            config.Save(customPath);
+
+            Assert.True(File.Exists(customPath));
+            var loaded = AppConfig.Load(customPath);
+            Assert.Equal(42, loaded.CheckIntervalSeconds);
+        }
+        finally
+        {
+            if (Directory.Exists(subDir))
+            {
+                Directory.Delete(subDir, recursive: true);
+            }
+        }
     }
 
     public void Dispose()

@@ -54,9 +54,9 @@ If you frequently use VPNs (WireGuard, OpenVPN, Fortinet, Sing-box, Tailscale, v
 
 ### 1. Download Pre-Built Binary
 Download the latest ready-to-run release from **[GitHub Releases](../../releases)**:
-- **`PingArmor-v*-win-x64.zip`**: Fully portable standalone single-file executable (~50 MB). All .NET 10 runtimes are embedded. Works out-of-the-box on any Windows 10/11 PC without installing any .NET runtimes or SDKs.
+- **`PingArmor-v*-win-x64.zip`**: Fully standalone package. Contains the `PingArmor` folder with the executable and all required WPF companion runtime libraries. Works out-of-the-box on any Windows 10/11 PC without installing any .NET runtimes or SDKs.
 
-Just extract the ZIP and run `PingArmor.exe`!
+Just extract the ZIP and run `PingArmor.exe` from the `PingArmor` folder!
 
 ### 2. Run Directly from Source
 If you have [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) installed:
@@ -124,9 +124,9 @@ PingArmor.exe --lang kk    # Kazakh
 
 ---
 
-## ⚙️ Configuration (`config.json`)
+## ⚙️ Configuration (`configs/config.json`)
 
-On startup, `config.json` is automatically loaded or created beside the executable:
+On startup, configuration is automatically loaded or created at `configs/config.json` (backups are saved in `backups/backup.json`, and event logs in `logs/pingarmor.log`):
 
 ```json
 {
@@ -178,6 +178,9 @@ dotnet publish src/PingArmor.csproj -c Release -r win-x64 --self-contained true 
 
 ---
 
-## 📄 License
+## 📄 License & Attributions
 
 This project is licensed under the [MIT License](LICENSE).
+
+### Third-Party Assets
+- Application icon created by [Magnific](https://www.flaticon.com/authors/magnific) from [Flaticon](https://www.flaticon.com/).
