@@ -283,5 +283,33 @@ public class MetricDecisionEngineTests
         Assert.Equal(7, plan.PrimaryAdapter?.InterfaceIndex);
         Assert.Contains("Metric optimization disabled", plan.Summary);
     }
+
+    [Fact]
+    public void Evaluate_PropagatesDisabledDnsAndWpadFlagsToPlan()
+    {
+        var config = new AppConfig
+        {
+            DisableSmartNameResolution = false,
+            DisableWpad = false,
+            FlushDnsOnChange = false
+        };
+
+        var ethernet = new NetworkAdapterInfo
+        {
+            InterfaceIndex = 7,
+            Name = "Ethernet",
+            Type = AdapterType.PhysicalEthernet,
+            IsPhysical = true,
+            IsUp = true,
+            HasInternet = true,
+            CurrentIPv4Metric = 5
+        };
+
+        var plan = MetricDecisionEngine.Evaluate(new[] { ethernet }, config);
+
+        Assert.False(plan.DisableSmartNameResolution);
+        Assert.False(plan.DisableWpad);
+        Assert.False(plan.FlushDns);
+    }
 }
 

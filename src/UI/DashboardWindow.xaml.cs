@@ -286,6 +286,9 @@ public partial class DashboardWindow : FluentWindow
         bool val = SwGamingMode.IsChecked ?? false;
         _config.EnableWlanOptimizer = val;
         _config.Save();
+        _logAppender(val
+            ? "[+] Parameter 'EnableWlanOptimizer': ENABLED (Wi-Fi background scan suppression active)"
+            : "[*] Parameter 'EnableWlanOptimizer': DISABLED (checkbox unchecked)");
         var res = WlanOptimizerService.SetGamingMode(val);
         foreach (var l in res.Logs) _logAppender(l);
         UpdateOverviewState();
@@ -294,8 +297,12 @@ public partial class DashboardWindow : FluentWindow
     private void SwMetricOpt_Click(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingSwitches) return;
-        _config.EnableMetricOptimization = SwMetricOpt.IsChecked ?? false;
+        bool val = SwMetricOpt.IsChecked ?? false;
+        _config.EnableMetricOptimization = val;
         _config.Save();
+        _logAppender(val
+            ? "[+] Parameter 'EnableMetricOptimization': ENABLED (automatic adapter priority routing active)"
+            : "[*] Parameter 'EnableMetricOptimization': DISABLED (interface priority routing stopped)");
         _monitor.TriggerManualCheck();
     }
 
@@ -305,52 +312,99 @@ public partial class DashboardWindow : FluentWindow
         bool val = SwStartup.IsChecked ?? false;
         if (val) StartupManager.EnableStartup();
         else StartupManager.DisableStartup();
-        SwStartup.IsChecked = StartupManager.IsStartupEnabled();
+        bool enabled = StartupManager.IsStartupEnabled();
+        SwStartup.IsChecked = enabled;
+        _logAppender(enabled
+            ? "[+] Parameter 'Startup': ENABLED"
+            : "[*] Parameter 'Startup': DISABLED (checkbox unchecked)");
+        _logAppender(enabled
+            ? "[+] System task verified: Windows Task Scheduler -> 'PingArmor' task active (launch on logon with highest privileges)"
+            : "[*] System task verified: Windows Task Scheduler -> 'PingArmor' task removed");
     }
 
     private void SwRestoreOnExit_Click(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingSwitches) return;
-        _config.RestoreOnExit = SwRestoreOnExit.IsChecked ?? false;
+        bool val = SwRestoreOnExit.IsChecked ?? false;
+        _config.RestoreOnExit = val;
         _config.Save();
+        _logAppender(val
+            ? "[+] Parameter 'RestoreOnExit': ENABLED (system settings will revert when PingArmor exits)"
+            : "[*] Parameter 'RestoreOnExit': DISABLED (changes will persist when PingArmor exits)");
     }
 
     private void SwNotifications_Click(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingSwitches) return;
-        _config.ShowNotifications = SwNotifications.IsChecked ?? false;
+        bool val = SwNotifications.IsChecked ?? false;
+        _config.ShowNotifications = val;
         _config.Save();
+        _logAppender(val
+            ? "[+] Parameter 'ShowNotifications': ENABLED (system notifications active)"
+            : "[*] Parameter 'ShowNotifications': DISABLED (system notifications muted)");
     }
 
     private void SwDisableIPv6_Click(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingSwitches) return;
-        _config.DisableIPv6OnWifi = SwDisableIPv6.IsChecked ?? false;
+        bool val = SwDisableIPv6.IsChecked ?? false;
+        _config.DisableIPv6OnWifi = val;
         _config.Save();
-        _monitor.TriggerManualCheck();
+        _logAppender(val
+            ? "[+] Parameter 'DisableIPv6OnWifi': ENABLED (disabling IPv6 on Wi-Fi adapters)"
+            : "[*] Parameter 'DisableIPv6OnWifi': DISABLED (restoring IPv6 on Wi-Fi adapters)");
+        var logs = _engine.SetIPv6OnWifiAdapters(val);
+        foreach (var l in logs) _logAppender(l);
     }
 
     private void SwDisableSmartDns_Click(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingSwitches) return;
-        _config.DisableSmartNameResolution = SwDisableSmartDns.IsChecked ?? false;
+        bool val = SwDisableSmartDns.IsChecked ?? false;
+        _config.DisableSmartNameResolution = val;
         _config.Save();
-        _monitor.TriggerManualCheck();
+
+        var status = DnsHelper.ConfigureSmartDnsPolicy(val);
+        _logAppender(val
+            ? "[+] Parameter 'DisableSmartNameResolution': ENABLED (optimization active)"
+            : "[*] Parameter 'DisableSmartNameResolution': DISABLED (checkbox unchecked)");
+        _logAppender(val
+            ? $"[+] System registry verified: {status}"
+            : $"[*] System registry verified: {status}");
     }
 
     private void SwDisableWpad_Click(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingSwitches) return;
-        _config.DisableWpad = SwDisableWpad.IsChecked ?? false;
+        bool val = SwDisableWpad.IsChecked ?? false;
+        _config.DisableWpad = val;
         _config.Save();
-        _monitor.TriggerManualCheck();
+
+        var status = DnsHelper.ConfigureWpadPolicy(val);
+        _logAppender(val
+            ? "[+] Parameter 'DisableWpad' (WPAD): ENABLED (optimization active)"
+            : "[*] Parameter 'DisableWpad' (WPAD): DISABLED (checkbox unchecked)");
+        _logAppender(val
+            ? $"[+] System registry verified: {status}"
+            : $"[*] System registry verified: {status}");
     }
 
     private void SwFlushDns_Click(object sender, RoutedEventArgs e)
     {
         if (_isUpdatingSwitches) return;
-        _config.FlushDnsOnChange = SwFlushDns.IsChecked ?? false;
+        bool val = SwFlushDns.IsChecked ?? false;
+        _config.FlushDnsOnChange = val;
         _config.Save();
+        _logAppender(val
+            ? "[+] Parameter 'FlushDnsOnChange': ENABLED (automatic DNS cache flushing on network change)"
+            : "[*] Parameter 'FlushDnsOnChange': DISABLED (checkbox unchecked)");
+        if (val)
+        {
+            bool flushed = DnsHelper.FlushDnsCache();
+            _logAppender(flushed
+                ? "[+] System DNS cache verified: successfully flushed (DnsFlushResolverCache)"
+                : "[-] Failed to flush system DNS cache");
+        }
     }
 
     private void BtnLang_Click(object sender, RoutedEventArgs e)

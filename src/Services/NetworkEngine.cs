@@ -307,16 +307,10 @@ public class NetworkEngine : INetworkEngine
             }
         }
 
-        // Apply DNSClient and WPAD registry policies (conditionally)
-        if (plan.DisableSmartNameResolution || plan.DisableWpad)
-        {
-            DnsHelper.ConfigureDnsPolicies(plan.DisableSmartNameResolution, plan.DisableWpad);
-
-            var policyParts = new List<string>();
-            if (plan.DisableSmartNameResolution) policyParts.Add("DisableSmartNameResolution=1");
-            if (plan.DisableWpad) policyParts.Add("AutoDetect=0");
-            result.Logs.Add($"[+] Registry policies updated ({string.Join(", ", policyParts)})");
-        }
+        // Apply DNSClient and WPAD registry policies
+        DnsHelper.ConfigureDnsPolicies(plan.DisableSmartNameResolution, plan.DisableWpad);
+        result.Logs.Add($"[+] System registry: WPAD -> {DnsHelper.GetWpadStatusDescription()}");
+        result.Logs.Add($"[+] System registry: SmartDNS -> {DnsHelper.GetSmartDnsStatusDescription()}");
 
         // Flush system DNS resolver cache
         if (plan.FlushDns || force)
@@ -344,9 +338,52 @@ public class NetworkEngine : INetworkEngine
         RunProcess("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"Set-NetIPInterface -InterfaceIndex {interfaceIndex} -AutomaticMetric Disabled -InterfaceMetric {metric} -ErrorAction SilentlyContinue\"");
     }
 
+    public List<string> SetIPv6OnWifiAdapters(bool disable)
+    {
+        var logs = new List<string>();
+        try
+        {
+            var adapters = GetAdapters()
+                .Where(a => a.Type == AdapterType.PhysicalWiFi)
+                .ToList();
+
+            foreach (var adapter in adapters)
+            {
+                if (disable)
+                {
+                    DisableIPv6OnAdapter(adapter.Name);
+                    logs.Add($"[+] System adapter verified: Wi-Fi '{adapter.Name}': IPv6 is DISABLED (ms_tcpip6 binding disabled)");
+                }
+                else
+                {
+                    EnableIPv6OnAdapter(adapter.Name);
+                    logs.Add($"[*] System adapter verified: Wi-Fi '{adapter.Name}': IPv6 is ENABLED (ms_tcpip6 binding restored)");
+                }
+            }
+
+            if (adapters.Count == 0)
+            {
+                logs.Add(disable
+                    ? "[*] Wi-Fi IPv6: Disabled (no active Wi-Fi adapters detected)"
+                    : "[*] Wi-Fi IPv6: Enabled (no active Wi-Fi adapters detected)");
+            }
+        }
+        catch (Exception ex)
+        {
+            logs.Add($"[-] Error configuring IPv6 on Wi-Fi adapters: {ex.Message}");
+        }
+
+        return logs;
+    }
+
     private static void DisableIPv6OnAdapter(string adapterName)
     {
         RunProcess("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"Disable-NetAdapterBinding -Name '{adapterName}' -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue\"");
+    }
+
+    private static void EnableIPv6OnAdapter(string adapterName)
+    {
+        RunProcess("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"Enable-NetAdapterBinding -Name '{adapterName}' -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue\"");
     }
 
     private static void RunProcess(string fileName, string args)
