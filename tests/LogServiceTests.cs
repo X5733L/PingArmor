@@ -48,6 +48,7 @@ public class LogServiceTests : IDisposable
             Assert.True(eventFired);
             Assert.NotNull(received);
             Assert.Contains("Test notification message", received);
+            Assert.Matches(@"^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]", received);
 
             var recent = LogService.GetRecentLogs();
             Assert.NotEmpty(recent);

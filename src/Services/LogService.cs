@@ -126,7 +126,7 @@ public static class LogService
 
     public static void Log(string message)
     {
-        string entry = $"[{DateTime.Now:HH:mm:ss}] {message}";
+        string entry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
 
         lock (_lock)
         {
