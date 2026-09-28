@@ -177,47 +177,10 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <Grid Grid.Row="0" Margin="0,0,0,16">
-                        <TextBlock x:Name="TxtLogTitle" Text="{Binding Texts.NavLog}" Style="{StaticResource PageTitleTextStyle}" />
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <ui:Button x:Name="BtnLogOptimize" Content="{Binding Texts.OptimizeNowShort}" Appearance="Primary" Margin="0,0,8,0" Click="BtnOptimizeNow_Click">
-                                <ui:Button.Icon>
-                                    <ui:SymbolIcon Symbol="Flash24" />
-                                </ui:Button.Icon>
-                            </ui:Button>
-                            <ui:Button x:Name="BtnLogClear" Content="{Binding Texts.Clear}" Margin="0,0,8,0" Click="BtnLogClear_Click">
-                                <ui:Button.Icon>
-                                    <ui:SymbolIcon Symbol="Broom24" />
-                                </ui:Button.Icon>
-                            </ui:Button>
-                            <ui:Button x:Name="BtnLogOpenFile" Content="{Binding Texts.LogOpenFile}" Margin="0,0,8,0" Click="BtnLogOpenFile_Click">
-                                <ui:Button.Icon>
-                                    <ui:SymbolIcon Symbol="Document24" />
-                                </ui:Button.Icon>
-                            </ui:Button>
-                            <ui:Button x:Name="BtnLogCopy" Content="{Binding Texts.CopyLog}" Click="BtnLogCopy_Click">
-                                <ui:Button.Icon>
-                                    <ui:SymbolIcon Symbol="Copy24" />
-                                </ui:Button.Icon>
-                            </ui:Button>
-                        </StackPanel>
-                    </Grid>
+                    <TextBlock x:Name="TxtLogTitle" Grid.Row="0" Text="{Binding Texts.NavLog}" Style="{StaticResource PageTitleTextStyle}" Margin="0,0,0,16" />
 
-                    <TextBox
-                        x:Name="TbLog"
-                        Grid.Row="1"
-                        IsReadOnly="True"
-                        VerticalScrollBarVisibility="Auto"
-                        TextWrapping="Wrap"
-                        FontFamily="Consolas"
-                        FontSize="13"
-                        Background="{DynamicResource ControlFillColorDefaultBrush}"
-                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                        BorderThickness="1"
-                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                        Padding="10" />
+                    <views:LogView x:Name="LogPage" Grid.Row="1" />
                 </Grid>
             </Grid>
         </Grid>
-    </Grid>
-</ui:FluentWindow>
+    </Grid></ui:FluentWindow>

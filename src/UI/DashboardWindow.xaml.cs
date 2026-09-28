@@ -1,7 +1,5 @@
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -31,14 +29,6 @@ public partial class DashboardWindow : FluentWindow
         DataContext = LocalizationService.Current;
 
         LocalizationService.LanguageChanged += OnLanguageChanged;
-        LogService.LogAppended += OnLogAppended;
-
-        var recent = LogService.GetRecentLogs();
-        if (recent.Count > 0)
-        {
-            TbLog.Text = string.Join(Environment.NewLine, recent) + Environment.NewLine;
-            TbLog.ScrollToEnd();
-        }
 
         UpdateRollbackCard();
     }
@@ -176,62 +166,6 @@ public partial class DashboardWindow : FluentWindow
 
     #endregion
 
-    #region Log Page
-
-    public void AppendLogText(string text)
-    {
-        if (TbLog == null) return;
-        if (!Dispatcher.CheckAccess())
-        {
-            Dispatcher.InvokeAsync(() => AppendLogText(text));
-            return;
-        }
-        TbLog.AppendText(text + Environment.NewLine);
-        TbLog.ScrollToEnd();
-    }
-
-    private void OnLogAppended(string line)
-    {
-        AppendLogText(line);
-    }
-
-    private void BtnLogClear_Click(object sender, RoutedEventArgs e)
-    {
-        TbLog.Clear();
-    }
-
-    private void BtnLogOpenFile_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            string path = LogService.LogFilePath;
-            if (!File.Exists(path))
-            {
-                File.WriteAllText(path, string.Empty);
-            }
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = path,
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            _logAppender($"[-] Failed to open log file: {ex.Message}");
-        }
-    }
-
-    private void BtnLogCopy_Click(object sender, RoutedEventArgs e)
-    {
-        if (!string.IsNullOrEmpty(TbLog.Text))
-        {
-            System.Windows.Clipboard.SetText(TbLog.Text);
-            _logAppender(LocalizationService.Strings.LogCopiedToast);
-        }
-    }
-
-    #endregion
-
     #region Localization & Lifetime
 
     private void OnLanguageChanged()
@@ -253,7 +187,6 @@ public partial class DashboardWindow : FluentWindow
 
     protected override void OnClosed(EventArgs e)
     {
-        LogService.LogAppended -= OnLogAppended;
         LocalizationService.LanguageChanged -= OnLanguageChanged;
         base.OnClosed(e);
     }

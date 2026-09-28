@@ -61,6 +61,30 @@ public class LogServiceTests : IDisposable
     }
 
     [Fact]
+    public void Log_FiresStructuredEntryAppended()
+    {
+        LogEntry? received = null;
+        Action<LogEntry> handler = entry => received = entry;
+
+        LogService.EntryAppended += handler;
+        try
+        {
+            LogService.Log(LogLevel.Warn, "structured message");
+        }
+        finally
+        {
+            LogService.EntryAppended -= handler;
+        }
+
+        Assert.NotNull(received);
+        Assert.Equal(LogLevel.Warn, received!.Level);
+        Assert.Equal("structured message", received.Message);
+
+        var entries = LogService.GetRecentEntries();
+        Assert.Contains(entries, e => e.Message == "structured message" && e.Level == LogLevel.Warn);
+    }
+
+    [Fact]
     public void Log_WritesToFileOnDisk()
     {
         LogService.Log("Disk write validation message");

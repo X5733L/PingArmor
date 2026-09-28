@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -9,10 +10,14 @@ public static class LogService
 {
     private static readonly object _lock = new();
     private static readonly List<string> _memoryBuffer = new(1000);
+    private static readonly List<LogEntry> _entries = new(1000);
     public const int MaxMemoryLines = 2000;
     public const long MaxFileSizeBytes = 5 * 1024 * 1024; // 5 MB
 
     public static event Action<string>? LogAppended;
+
+    /// <summary>Raised with a structured record for the in-app log viewer.</summary>
+    public static event Action<LogEntry>? EntryAppended;
 
     private static string? _customLogFilePath;
 
@@ -124,6 +129,13 @@ public static class LogService
                 lock (_lock)
                 {
                     _memoryBuffer.AddRange(lines);
+                    foreach (string line in lines)
+                    {
+                        if (TryParseLine(line, out var parsedEntry))
+                        {
+                            _entries.Add(parsedEntry);
+                        }
+                    }
                 }
             }
         }
@@ -145,7 +157,8 @@ public static class LogService
     {
         if (level < MinimumLevel) return;
 
-        string entry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level.ToTag()}] {message}";
+        var entry = new LogEntry(DateTime.Now, level, message);
+        string line = entry.ToDisplayString();
 
         lock (_lock)
         {
@@ -153,14 +166,26 @@ public static class LogService
             {
                 _memoryBuffer.RemoveAt(0);
             }
-            _memoryBuffer.Add(entry);
+            _memoryBuffer.Add(line);
 
-            WriteToFile(entry);
+            if (_entries.Count >= MaxMemoryLines)
+            {
+                _entries.RemoveAt(0);
+            }
+            _entries.Add(entry);
+
+            WriteToFile(line);
         }
 
         try
         {
-            LogAppended?.Invoke(entry);
+            EntryAppended?.Invoke(entry);
+        }
+        catch { }
+
+        try
+        {
+            LogAppended?.Invoke(line);
         }
         catch { }
     }
@@ -173,12 +198,57 @@ public static class LogService
         }
     }
 
+    /// <summary>Returns the structured records currently held in memory.</summary>
+    public static IReadOnlyList<LogEntry> GetRecentEntries()
+    {
+        lock (_lock)
+        {
+            return _entries.ToList();
+        }
+    }
+
     public static void ClearMemory()
     {
         lock (_lock)
         {
             _memoryBuffer.Clear();
+            _entries.Clear();
         }
+    }
+
+    private static bool TryParseLine(string line, out LogEntry entry)
+    {
+        entry = null!;
+        if (string.IsNullOrEmpty(line) || line[0] != '[') return false;
+
+        int timestampEnd = line.IndexOf(']');
+        if (timestampEnd <= 1) return false;
+        if (!DateTime.TryParseExact(
+                line.Substring(1, timestampEnd - 1),
+                "yyyy-MM-dd HH:mm:ss",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out DateTime timestamp))
+        {
+            return false;
+        }
+
+        int levelStart = line.IndexOf('[', timestampEnd + 1);
+        if (levelStart < 0) return false;
+        int levelEnd = line.IndexOf(']', levelStart + 1);
+        if (levelEnd < 0) return false;
+
+        LogLevel level = line.Substring(levelStart + 1, levelEnd - levelStart - 1) switch
+        {
+            "WARN" => LogLevel.Warn,
+            "ERROR" => LogLevel.Error,
+            "DEBUG" => LogLevel.Debug,
+            _ => LogLevel.Info
+        };
+
+        string message = line.Substring(levelEnd + 1).TrimStart();
+        entry = new LogEntry(timestamp, level, message);
+        return true;
     }
 
     private static void WriteToFile(string entry)
