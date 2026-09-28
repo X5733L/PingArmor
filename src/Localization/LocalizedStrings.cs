@@ -151,6 +151,12 @@ public class LocalizedStrings
     public required string AdaptersGroupVirtual { get; init; }
     public required string AdaptersEmpty { get; init; }
     public required string AdaptersSearchPlaceholder { get; init; }
+    public required string CheckedAtFormat { get; init; }
+    public required string PlannedChangesTitle { get; init; }
+    public required string PlannedChangesNone { get; init; }
+    public required string PlannedChangesApply { get; init; }
+    public required string LastOptimizationFormat { get; init; }
+    public required string WarningsTitle { get; init; }
 
     public static readonly LocalizedStrings Ru = new()
     {
@@ -283,6 +289,12 @@ public class LocalizedStrings
         AdaptersGroupVirtual = "Виртуальные и VPN",
         AdaptersEmpty = "Сетевые адаптеры не найдены",
         AdaptersSearchPlaceholder = "Поиск по адаптерам",
+        CheckedAtFormat = "Проверено {0}",
+        PlannedChangesTitle = "Планируемые изменения",
+        PlannedChangesNone = "Изменения не требуются",
+        PlannedChangesApply = "Применить",
+        LastOptimizationFormat = "Обновлено адаптеров: {0} · {1}",
+        WarningsTitle = "Предупреждения",
         ResetConfirmTitle = "Подтверждение сброса",
         ResetConfirmMessage = "Вы действительно хотите сбросить сетевой стек Windows (Winsock, TCP/IP, AutomaticMetric)?\nВсе сетевые настройки вернутся к заводским значениям.",
         ResetCompletedMessage = "Сетевой стек Windows успешно сброшен к заводским параметрам. Рекомендуется перезагрузить компьютер.",
@@ -433,6 +445,12 @@ public class LocalizedStrings
         AdaptersGroupVirtual = "Virtual & VPN",
         AdaptersEmpty = "No network adapters found",
         AdaptersSearchPlaceholder = "Search adapters",
+        CheckedAtFormat = "Checked {0}",
+        PlannedChangesTitle = "Planned changes",
+        PlannedChangesNone = "No changes required",
+        PlannedChangesApply = "Apply",
+        LastOptimizationFormat = "Adapters updated: {0} · {1}",
+        WarningsTitle = "Warnings",
         ResetConfirmTitle = "Confirm Reset",
         ResetConfirmMessage = "Are you sure you want to reset the Windows network stack (Winsock, TCP/IP, AutomaticMetric)?\nAll network interfaces will revert to factory defaults.",
         ResetCompletedMessage = "Windows network stack was successfully reset to factory defaults. A system restart is recommended.",
@@ -583,6 +601,12 @@ public class LocalizedStrings
         AdaptersGroupVirtual = "Виртуалды және VPN",
         AdaptersEmpty = "Желілік адаптерлер табылмады",
         AdaptersSearchPlaceholder = "Адаптерлерді іздеу",
+        CheckedAtFormat = "Тексерілді {0}",
+        PlannedChangesTitle = "Жоспарланған өзгерістер",
+        PlannedChangesNone = "Өзгерістер қажет емес",
+        PlannedChangesApply = "Қолдану",
+        LastOptimizationFormat = "Жаңартылған адаптерлер: {0} · {1}",
+        WarningsTitle = "Ескертулер",
         ResetConfirmTitle = "Тастауды растау",
         ResetConfirmMessage = "Windows желілік стекін (Winsock, TCP/IP, AutomaticMetric) шынымен тастағыңыз келе ме?\nБарлық желілік баптаулар зауыттық күйге оралады.",
         ResetCompletedMessage = "Windows желілік стекі зауыттық күйге сәтті тасталды. Компьютерді қайта қосу ұсынылады.",

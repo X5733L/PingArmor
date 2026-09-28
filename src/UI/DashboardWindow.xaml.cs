@@ -5,7 +5,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using PingArmor.Config;
 using PingArmor.Localization;
 using PingArmor.Models;
 using PingArmor.Services;
@@ -19,15 +18,11 @@ namespace PingArmor.UI;
 
 public partial class DashboardWindow : FluentWindow
 {
-    private readonly AppConfig _config;
     private readonly NetworkMonitor _monitor;
     private readonly Action<string> _logAppender;
 
-    private OptimizationPlan? _lastPlan;
-
-    public DashboardWindow(AppConfig config, NetworkMonitor monitor, Action<string> logAppender)
+    public DashboardWindow(NetworkMonitor monitor, Action<string> logAppender)
     {
-        _config = config;
         _monitor = monitor;
         _logAppender = logAppender;
 
@@ -104,6 +99,7 @@ public partial class DashboardWindow : FluentWindow
 
     #region Overview Page
 
+    /// <summary>Forwards the latest plan to the overview view (also called by the tray).</summary>
     public void UpdateOverviewState(OptimizationPlan? plan = null)
     {
         if (!Dispatcher.CheckAccess())
@@ -112,59 +108,7 @@ public partial class DashboardWindow : FluentWindow
             return;
         }
 
-        if (plan != null) _lastPlan = plan;
-        plan ??= _lastPlan;
-
-        var s = LocalizationService.Strings;
-        if (!_monitor.IsRunning)
-        {
-            BtnOverviewToggle.Content = s.ResumeProtection;
-            IconOverviewToggle.Symbol = SymbolRegular.Play24;
-            TxtHeroStatus.Text = s.StatusPaused;
-            TxtHeroStatus.Foreground = ThemeBrush("StatusPausedBrush");
-            TxtHeroDesc.Text = s.OverviewPausedDesc;
-        }
-        else
-        {
-            BtnOverviewToggle.Content = s.PauseProtection;
-            IconOverviewToggle.Symbol = SymbolRegular.Pause24;
-            if (plan != null)
-            {
-                if (plan.NeedsOptimization)
-                {
-                    TxtHeroStatus.Text = s.StatusAdjusting;
-                    TxtHeroStatus.Foreground = ThemeBrush("StatusWarnBrush");
-                }
-                else
-                {
-                    TxtHeroStatus.Text = s.StatusProtected;
-                    TxtHeroStatus.Foreground = ThemeBrush("StatusOkBrush");
-                }
-                TxtHeroDesc.Text = plan.Summary;
-
-                if (plan.PrimaryAdapter != null)
-                {
-                    TxtPrimaryAdapterName.Text = plan.PrimaryAdapter.Name;
-                    TxtPrimaryAdapterDetails.Text = string.Format(
-                        s.PrimaryAdapterDetailsFormat,
-                        plan.PrimaryAdapter.Type,
-                        plan.PrimaryAdapter.CurrentIPv4Metric,
-                        plan.PrimaryAdapter.HasInternet ? s.InternetYes : s.InternetNo);
-                }
-                else
-                {
-                    TxtPrimaryAdapterName.Text = s.PrimaryChannelNone;
-                    TxtPrimaryAdapterDetails.Text = s.TrayTextNoConnection;
-                }
-            }
-        }
-
-        TxtWlanGamingStatus.Text = _config.EnableWlanOptimizer
-            ? s.WlanOptimizerActive
-            : s.WlanOptimizerStandard;
-        TxtWlanGamingStatus.Foreground = _config.EnableWlanOptimizer
-            ? ThemeBrush("StatusOkBrush")
-            : ThemeBrush("StatusPausedBrush");
+        OverviewPage.Update(plan);
     }
 
     private void BtnOptimizeNow_Click(object sender, RoutedEventArgs e)
@@ -172,15 +116,7 @@ public partial class DashboardWindow : FluentWindow
         _monitor.TriggerManualCheck();
     }
 
-    private void BtnToggleProtection_Click(object sender, RoutedEventArgs e)
-    {
-        if (_monitor.IsRunning) _monitor.Stop();
-        else _monitor.Start();
-        UpdateOverviewState();
-    }
-
     #endregion
-
     #region Adapters Page
 
     // Adapters are handled by AdaptersView / AdaptersViewModel (see UI/Views, UI/ViewModels).

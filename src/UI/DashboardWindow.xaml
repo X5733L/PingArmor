@@ -85,55 +85,12 @@
 
             <!-- Page Views Host (Column 1) -->
             <Grid Grid.Column="1" Margin="24,12,24,18">
-                <!-- Page 1: Overview -->
+                                <!-- Page 1: Overview -->
                 <Grid x:Name="PageOverview" Visibility="Visible">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <!-- Header & Command Bar -->
-                    <Grid Grid.Row="0" Margin="0,0,0,16">
-                        <TextBlock x:Name="TxtOverviewTitle" Text="{Binding Texts.NavOverview}" Style="{StaticResource PageTitleTextStyle}" />
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <ui:Button x:Name="BtnOverviewOptimize" Content="{Binding Texts.OptimizeNowShort}" Appearance="Primary" Margin="0,0,8,0" Click="BtnOptimizeNow_Click">
-                                <ui:Button.Icon>
-                                    <ui:SymbolIcon Symbol="Flash24" />
-                                </ui:Button.Icon>
-                            </ui:Button>
-                            <ui:Button x:Name="BtnOverviewToggle" Content="Приостановить защиту" Click="BtnToggleProtection_Click">
-                                <ui:Button.Icon>
-                                    <ui:SymbolIcon x:Name="IconOverviewToggle" Symbol="Pause24" />
-                                </ui:Button.Icon>
-                            </ui:Button>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Content Cards -->
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
-                            <!-- Hero Status Card -->
-                            <ui:Card Margin="0,0,0,14" Padding="20">
-                                <StackPanel>
-                                    <TextBlock x:Name="TxtHeroStatus" Text="Защищено (Приоритет в норме)" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource StatusOkBrush}" Margin="0,0,0,6" />
-                                    <TextBlock x:Name="TxtHeroDesc" Text="PingArmor автоматически отслеживает приоритеты сетевых интерфейсов." FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
-                                </StackPanel>
-                            </ui:Card>
-
-                            <!-- Active Channel Card -->
-                            <ui:Card Margin="0,0,0,14" Padding="20">
-                                <StackPanel>
-                                    <TextBlock x:Name="TxtActiveChannelHeader" Text="{Binding Texts.ActiveChannelTitle}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8" />
-                                    <TextBlock x:Name="TxtPrimaryAdapterName" Text="Определение..." FontSize="14" FontWeight="Bold" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,0,4" />
-                                    <TextBlock x:Name="TxtPrimaryAdapterDetails" Text="Тип: Ethernet • Метрика: 5 • Интернет: Активен" FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8" />
-                                    <TextBlock x:Name="TxtWlanGamingStatus" Text="Фоновый поиск сетей Wi-Fi: Отключен (Игровой режим активен)" FontSize="13" Foreground="{DynamicResource StatusOkBrush}" />
-                                </StackPanel>
-                            </ui:Card>
-                        </StackPanel>
-                    </ScrollViewer>
+                    <views:OverviewView x:Name="OverviewPage" />
                 </Grid>
 
-                <!-- Page 2: Adapters -->
+<!-- Page 2: Adapters -->
                 <Grid x:Name="PageAdapters" Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
