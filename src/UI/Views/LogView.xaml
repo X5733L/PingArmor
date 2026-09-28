@@ -21,52 +21,52 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <!-- Level filters -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+        <WrapPanel Grid.Row="0" Margin="0,0,0,10">
             <ui:Button Appearance="{Binding IsLevelAllSelected, Converter={StaticResource BoolToAppearance}}" Command="{Binding SetLevelFilterCommand}" CommandParameter="All" Content="{Binding AllChipText}" FontSize="12" Margin="0,0,6,0" Padding="10,4" />
             <ui:Button Appearance="{Binding IsLevelDebugSelected, Converter={StaticResource BoolToAppearance}}" Command="{Binding SetLevelFilterCommand}" CommandParameter="Debug" Content="{Binding DebugChipText}" FontSize="12" Margin="0,0,6,0" Padding="10,4" />
             <ui:Button Appearance="{Binding IsLevelInfoSelected, Converter={StaticResource BoolToAppearance}}" Command="{Binding SetLevelFilterCommand}" CommandParameter="Info" Content="{Binding InfoChipText}" FontSize="12" Margin="0,0,6,0" Padding="10,4" />
             <ui:Button Appearance="{Binding IsLevelWarnSelected, Converter={StaticResource BoolToAppearance}}" Command="{Binding SetLevelFilterCommand}" CommandParameter="Warn" Content="{Binding WarnChipText}" FontSize="12" Margin="0,0,6,0" Padding="10,4" />
             <ui:Button Appearance="{Binding IsLevelErrorSelected, Converter={StaticResource BoolToAppearance}}" Command="{Binding SetLevelFilterCommand}" CommandParameter="Error" Content="{Binding ErrorChipText}" FontSize="12" Padding="10,4" />
+        </WrapPanel>
+
+        <!-- Search + auto-scroll -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+            <ui:TextBox Width="240" AutomationProperties.Name="{Binding Texts.LogSearchPlaceholder}" PlaceholderText="{Binding Texts.LogSearchPlaceholder}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+            <ui:ToggleSwitch Margin="16,0,0,0" AutomationProperties.Name="{Binding Texts.LogAutoScroll}" IsChecked="{Binding AutoScroll, Mode=TwoWay}" Content="{Binding Texts.LogAutoScroll}" />
         </StackPanel>
 
-        <!-- Search + actions -->
-        <Grid Grid.Row="1" Margin="0,0,0,12">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                <ui:TextBox Width="240" AutomationProperties.Name="{Binding Texts.LogSearchPlaceholder}" PlaceholderText="{Binding Texts.LogSearchPlaceholder}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-                <ui:ToggleSwitch Margin="16,0,0,0" AutomationProperties.Name="{Binding Texts.LogAutoScroll}" IsChecked="{Binding AutoScroll, Mode=TwoWay}" Content="{Binding Texts.LogAutoScroll}" />
-            </StackPanel>
-
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <ui:Button Appearance="Primary" Command="{Binding OptimizeCommand}" Content="{Binding Texts.OptimizeNowShort}" Margin="0,0,8,0">
-                    <ui:Button.Icon>
-                        <ui:SymbolIcon Symbol="Flash24" />
-                    </ui:Button.Icon>
-                </ui:Button>
-                <ui:Button Command="{Binding ClearCommand}" Content="{Binding Texts.Clear}" Margin="0,0,8,0">
-                    <ui:Button.Icon>
-                        <ui:SymbolIcon Symbol="Broom24" />
-                    </ui:Button.Icon>
-                </ui:Button>
-                <ui:Button Command="{Binding OpenFileCommand}" Content="{Binding Texts.LogOpenFile}" Margin="0,0,8,0">
-                    <ui:Button.Icon>
-                        <ui:SymbolIcon Symbol="Document24" />
-                    </ui:Button.Icon>
-                </ui:Button>
-                <ui:Button Command="{Binding CopyCommand}" Content="{Binding Texts.CopyLog}">
-                    <ui:Button.Icon>
-                        <ui:SymbolIcon Symbol="Copy24" />
-                    </ui:Button.Icon>
-                </ui:Button>
-            </StackPanel>
-        </Grid>
+        <!-- Actions -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,12">
+            <ui:Button Appearance="Primary" Command="{Binding OptimizeCommand}" Content="{Binding Texts.OptimizeNowShort}" Margin="0,0,8,0">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="Flash24" />
+                </ui:Button.Icon>
+            </ui:Button>
+            <ui:Button Command="{Binding ClearCommand}" Content="{Binding Texts.Clear}" Margin="0,0,8,0">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="Broom24" />
+                </ui:Button.Icon>
+            </ui:Button>
+            <ui:Button Command="{Binding OpenFileCommand}" Content="{Binding Texts.LogOpenFile}" Margin="0,0,8,0">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="Document24" />
+                </ui:Button.Icon>
+            </ui:Button>
+            <ui:Button Command="{Binding CopyCommand}" Content="{Binding Texts.CopyLog}">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="Copy24" />
+                </ui:Button.Icon>
+            </ui:Button>
+        </StackPanel>
 
         <!-- Log list -->
         <Border
-            Grid.Row="2"
+            Grid.Row="3"
             Background="{DynamicResource ControlFillColorDefaultBrush}"
             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
             BorderThickness="1"

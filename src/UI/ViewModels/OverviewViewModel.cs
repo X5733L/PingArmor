@@ -77,7 +77,7 @@ public sealed partial class OverviewViewModel : ViewModelBase
     /// <summary>Applies the latest optimization plan (or the previous one when null).</summary>
     public void Update(OptimizationPlan? plan)
     {
-        if (plan != null)
+        if (plan != null && !ReferenceEquals(plan, _lastPlan))
         {
             _lastPlan = plan;
             _lastCheckedAt = DateTime.Now;

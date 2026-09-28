@@ -80,7 +80,9 @@ public sealed partial class TrayIconViewModel : ViewModelBase
         _monitor.OptimizationApplied += OnOptimizationApplied;
         _monitor.StatusChanged += OnStatusChanged;
 
-        UpdateLocalization();
+        UpdateTexts();
+        _monitor.Start();
+        ApplyState();
     }
 
     public void AttachNotifier(Action<string, string, bool> notify) => _notify = notify;
@@ -175,14 +177,9 @@ public sealed partial class TrayIconViewModel : ViewModelBase
     {
         SafeInvoke(() =>
         {
-            UpdateLocalization();
             _dashboardWindow?.UpdateOverviewState(_lastPlan);
-
-            if (!isRunning)
-            {
-                Icon = GetShieldIcon("gray");
-                StatusText = LocalizationService.Strings.StatusPaused;
-            }
+            UpdateTexts();
+            ApplyState();
         });
     }
 
@@ -192,7 +189,7 @@ public sealed partial class TrayIconViewModel : ViewModelBase
         {
             _lastPlan = plan;
             _dashboardWindow?.UpdateOverviewState(plan);
-            RenderPlanStatus(plan);
+            ApplyState();
         });
     }
 
@@ -216,53 +213,67 @@ public sealed partial class TrayIconViewModel : ViewModelBase
         });
     }
 
-    private void RenderPlanStatus(OptimizationPlan plan)
+    protected override void OnLanguageChangedCore()
     {
-        var s = LocalizationService.Strings;
-
-        if (plan.PrimaryAdapter != null)
-        {
-            PrimaryAdapterText = string.Format(s.PrimaryChannelFormat, plan.PrimaryAdapter.Name, plan.PrimaryAdapter.CurrentIPv4Metric);
-            StatusText = plan.NeedsOptimization ? s.StatusAdjusting : s.StatusProtected;
-            Icon = plan.NeedsOptimization ? GetShieldIcon("orange") : GetShieldIcon("green");
-            ToolTipText = $"PingArmor: {plan.PrimaryAdapter.Name}";
-        }
-        else
-        {
-            PrimaryAdapterText = s.PrimaryChannelNone;
-            StatusText = s.StatusNoConnection;
-            Icon = GetShieldIcon("crimson");
-            ToolTipText = s.TrayTextNoConnection;
-        }
+        UpdateTexts();
+        ApplyState();
     }
 
-    protected override void OnLanguageChangedCore() => UpdateLocalization();
-
-    private void UpdateLocalization()
+    /// <summary>Updates the static (language dependent) menu texts.</summary>
+    private void UpdateTexts()
     {
         var s = LocalizationService.Strings;
-
         HeaderText = Program.IsAdministrator() ? s.HeaderAdmin : s.HeaderNoAdmin;
         ElevateText = s.RestartAsAdmin;
         OpenDashboardText = s.OpenDashboard;
         OptimizeText = s.OptimizeNow;
+        ExitText = s.Exit;
+    }
+
+    /// <summary>Recomputes tray icon, status text, tooltip and the monitoring command label.</summary>
+    private void ApplyState()
+    {
+        var s = LocalizationService.Strings;
+
         ToggleMonitoringText = _monitor.IsRunning ? s.PauseProtection : s.ResumeProtection;
         MonitoringIcon = _monitor.IsRunning ? SymbolRegular.Pause24 : SymbolRegular.Play24;
-        ExitText = s.Exit;
 
         if (!_monitor.IsRunning)
         {
             StatusText = s.StatusPaused;
+            PrimaryAdapterText = _lastPlan?.PrimaryAdapter is { } pausedAdapter
+                ? string.Format(s.PrimaryChannelFormat, pausedAdapter.Name, pausedAdapter.CurrentIPv4Metric)
+                : s.PrimaryChannelNone;
+            Icon = GetShieldIcon("gray");
+            SetToolTip(s.StatusPaused);
+            return;
         }
-        else if (_lastPlan != null)
+
+        if (_lastPlan?.PrimaryAdapter is { } adapter)
         {
-            RenderPlanStatus(_lastPlan);
+            PrimaryAdapterText = string.Format(s.PrimaryChannelFormat, adapter.Name, adapter.CurrentIPv4Metric);
+            StatusText = _lastPlan.NeedsOptimization ? s.StatusAdjusting : s.StatusProtected;
+            Icon = _lastPlan.NeedsOptimization ? GetShieldIcon("orange") : GetShieldIcon("green");
+            SetToolTip(_lastPlan.NeedsOptimization ? s.StatusAdjusting : s.StatusProtected, adapter.Name);
         }
         else
         {
-            StatusText = s.StatusInitializing;
             PrimaryAdapterText = s.PrimaryChannelDetecting;
+            StatusText = s.StatusInitializing;
+            Icon = GetShieldIcon("orange");
+            SetToolTip(s.StatusInitializing);
         }
+    }
+
+    private void SetToolTip(string status, string? detail = null)
+    {
+        string text = $"{LocalizationService.Strings.AppTitle} — {status}";
+        if (!string.IsNullOrEmpty(detail))
+        {
+            text += $" · {detail}";
+        }
+
+        ToolTipText = text.Length <= 127 ? text : text[..127];
     }
 
     #region Shield icon GDI cache
