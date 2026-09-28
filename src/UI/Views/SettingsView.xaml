@@ -1,0 +1,193 @@
+<UserControl
+    x:Class="PingArmor.UI.Views.SettingsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:conv="clr-namespace:PingArmor.UI.Converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    d:DesignWidth="700"
+    d:DesignHeight="600"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <conv:BoolToControlAppearanceConverter x:Key="BoolToAppearance" />
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,8,0">
+
+            <TextBlock Text="{Binding Texts.SettingsGroupNetwork}" Style="{StaticResource SectionHeaderTextStyle}" Margin="0,4,0,12" />
+
+            <ui:CardControl Margin="0,0,0,10">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Texts.MetricOptimizationTitle}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" Text="{Binding Texts.MetricOptimizationDesc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="Flash24" />
+                </ui:CardControl.Icon>
+                <ui:ToggleSwitch IsChecked="{Binding EnableMetricOptimization, Mode=TwoWay}" />
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,10">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Texts.GamingMode}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" Text="{Binding Texts.WlanOptimizerDesc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="WifiSettings20" />
+                </ui:CardControl.Icon>
+                <ui:ToggleSwitch IsChecked="{Binding EnableWlanOptimizer, Mode=TwoWay}" />
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,10">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Texts.DisableIPv6OnWifiTitle}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" Text="{Binding Texts.DisableIPv6OnWifiDesc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="ShieldProhibited24" />
+                </ui:CardControl.Icon>
+                <ui:ToggleSwitch IsChecked="{Binding DisableIPv6OnWifi, Mode=TwoWay}" />
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,10">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Texts.DisableSmartDnsTitle}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" Text="{Binding Texts.DisableSmartDnsDesc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="Globe24" />
+                </ui:CardControl.Icon>
+                <ui:ToggleSwitch IsChecked="{Binding DisableSmartNameResolution, Mode=TwoWay}" />
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,10">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Texts.DisableWpadTitle}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" Text="{Binding Texts.DisableWpadDesc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="ShieldCheckmark24" />
+                </ui:CardControl.Icon>
+                <ui:ToggleSwitch IsChecked="{Binding DisableWpad, Mode=TwoWay}" />
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,10">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Texts.FlushDnsTitle}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" Text="{Binding Texts.FlushDnsDesc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="Broom24" />
+                </ui:CardControl.Icon>
+                <ui:ToggleSwitch IsChecked="{Binding FlushDnsOnChange, Mode=TwoWay}" />
+            </ui:CardControl>
+
+            <TextBlock Text="{Binding Texts.SettingsGroupApp}" Style="{StaticResource SectionHeaderTextStyle}" Margin="0,16,0,12" />
+
+            <ui:CardControl Margin="0,0,0,10">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Texts.StartupWithWindows}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" Text="{Binding Texts.StartupDesc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="Power24" />
+                </ui:CardControl.Icon>
+                <ui:ToggleSwitch IsChecked="{Binding StartupWithWindows, Mode=TwoWay}" />
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,10">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Texts.RestoreOnExit}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" Text="{Binding Texts.RestoreOnExitDesc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="ArrowReset24" />
+                </ui:CardControl.Icon>
+                <ui:ToggleSwitch IsChecked="{Binding RestoreOnExit, Mode=TwoWay}" />
+            </ui:CardControl>
+
+            <ui:CardControl Margin="0,0,0,10">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Texts.Notifications}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" Text="{Binding Texts.NotificationsDesc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="Alert24" />
+                </ui:CardControl.Icon>
+                <ui:ToggleSwitch IsChecked="{Binding ShowNotifications, Mode=TwoWay}" />
+            </ui:CardControl>
+
+            <!-- Interface language -->
+            <ui:CardControl Margin="0,0,0,10">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Texts.LanguageInterfaceTitle}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" Text="{Binding Texts.LanguageInterfaceDesc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="LocalLanguage24" />
+                </ui:CardControl.Icon>
+                <StackPanel Orientation="Horizontal">
+                    <ui:Button Appearance="{Binding IsLanguageRu, Converter={StaticResource BoolToAppearance}}" Command="{Binding SetLanguageCommand}" CommandParameter="ru" Content="RU" Margin="0,0,4,0" />
+                    <ui:Button Appearance="{Binding IsLanguageEn, Converter={StaticResource BoolToAppearance}}" Command="{Binding SetLanguageCommand}" CommandParameter="en" Content="EN" Margin="0,0,4,0" />
+                    <ui:Button Appearance="{Binding IsLanguageKk, Converter={StaticResource BoolToAppearance}}" Command="{Binding SetLanguageCommand}" CommandParameter="kk" Content="KK" />
+                </StackPanel>
+            </ui:CardControl>
+
+            <!-- Theme -->
+            <ui:CardControl Margin="0,0,0,10">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Texts.ThemeTitle}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" Text="{Binding Texts.ThemeDesc}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="DarkTheme24" />
+                </ui:CardControl.Icon>
+                <StackPanel Orientation="Horizontal">
+                    <ui:Button Appearance="{Binding IsThemeSystemSelected, Converter={StaticResource BoolToAppearance}}" Command="{Binding SetThemeCommand}" CommandParameter="System" Content="{Binding Texts.ThemeSystem}" Margin="0,0,4,0" />
+                    <ui:Button Appearance="{Binding IsThemeLightSelected, Converter={StaticResource BoolToAppearance}}" Command="{Binding SetThemeCommand}" CommandParameter="Light" Content="{Binding Texts.ThemeLight}" Margin="0,0,4,0" />
+                    <ui:Button Appearance="{Binding IsThemeDarkSelected, Converter={StaticResource BoolToAppearance}}" Command="{Binding SetThemeCommand}" CommandParameter="Dark" Content="{Binding Texts.ThemeDark}" />
+                </StackPanel>
+            </ui:CardControl>
+
+            <!-- About -->
+            <ui:Card Margin="0,0,0,10" Padding="14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ui:SymbolIcon Symbol="Info24" FontSize="20" Margin="0,0,14,0" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Text="{Binding VersionText}" />
+                        <TextBlock FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,2,0,0" Text="{Binding Texts.AboutIconCredit}" />
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

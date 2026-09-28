@@ -34,6 +34,8 @@ public class DebounceTimerTests
         {
             return new OptimizationResult { Success = true };
         }
+
+        public List<string> SetIPv6OnWifiAdapters(bool disable) => new();
     }
 
     [Fact]

@@ -1,13 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using PingArmor.Common;
 using PingArmor.Config;
 using PingArmor.Localization;
 using PingArmor.Models;
@@ -17,24 +14,20 @@ using Wpf.Ui.Controls;
 using MessageBoxButton = System.Windows.MessageBoxButton;
 using MessageBoxResult = System.Windows.MessageBoxResult;
 using MessageBoxImage = System.Windows.MessageBoxImage;
-using TextBlock = System.Windows.Controls.TextBlock;
 
 namespace PingArmor.UI;
 
 public partial class DashboardWindow : FluentWindow
 {
     private readonly AppConfig _config;
-    private readonly NetworkEngine _engine;
     private readonly NetworkMonitor _monitor;
     private readonly Action<string> _logAppender;
 
     private OptimizationPlan? _lastPlan;
-    private bool _isUpdatingSwitches;
 
-    public DashboardWindow(AppConfig config, NetworkEngine engine, NetworkMonitor monitor, Action<string> logAppender)
+    public DashboardWindow(AppConfig config, NetworkMonitor monitor, Action<string> logAppender)
     {
         _config = config;
-        _engine = engine;
         _monitor = monitor;
         _logAppender = logAppender;
 
@@ -52,8 +45,6 @@ public partial class DashboardWindow : FluentWindow
             TbLog.ScrollToEnd();
         }
 
-        UpdateLocalization();
-        SyncTuningSwitches();
         UpdateRollbackCard();
     }
 
@@ -86,7 +77,7 @@ public partial class DashboardWindow : FluentWindow
                 break;
             case 2:
                 ShowPageByTag("Settings");
-                SyncTuningSwitches();
+                SettingsPage.Sync();
                 break;
             case 3:
                 ShowPageByTag("Rollback");
@@ -108,7 +99,7 @@ public partial class DashboardWindow : FluentWindow
 
         if (tag == "Adapters") AdaptersPage.Refresh();
         if (tag == "Rollback") UpdateRollbackCard();
-        if (tag == "Settings") SyncTuningSwitches();
+        if (tag == "Settings") SettingsPage.Sync();
     }
 
     #region Overview Page
@@ -193,223 +184,6 @@ public partial class DashboardWindow : FluentWindow
     #region Adapters Page
 
     // Adapters are handled by AdaptersView / AdaptersViewModel (see UI/Views, UI/ViewModels).
-
-    #endregion
-
-    #region Settings Page
-
-    private void TrySaveConfig()
-    {
-        try
-        {
-            _config.Save();
-        }
-        catch (Exception ex)
-        {
-            _logAppender($"[-] Failed to save configuration: {ex.Message}");
-        }
-    }
-
-    public void SyncTuningSwitches()
-    {
-        if (!Dispatcher.CheckAccess())
-        {
-            Dispatcher.InvokeAsync(SyncTuningSwitches);
-            return;
-        }
-
-        _isUpdatingSwitches = true;
-        try
-        {
-            SwGamingMode.IsChecked = _config.EnableWlanOptimizer;
-            SwMetricOpt.IsChecked = _config.EnableMetricOptimization;
-            SwStartup.IsChecked = StartupManager.IsStartupEnabled();
-            SwRestoreOnExit.IsChecked = _config.RestoreOnExit;
-            SwNotifications.IsChecked = _config.ShowNotifications;
-            SwDisableIPv6.IsChecked = _config.DisableIPv6OnWifi;
-            SwDisableSmartDns.IsChecked = _config.DisableSmartNameResolution;
-            SwDisableWpad.IsChecked = _config.DisableWpad;
-            SwFlushDns.IsChecked = _config.FlushDnsOnChange;
-
-            UpdateLanguageButtonHighlight();
-            UpdateThemeButtonHighlight();
-        }
-        finally
-        {
-            _isUpdatingSwitches = false;
-        }
-    }
-
-    private void SwGamingMode_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingSwitches) return;
-        bool val = SwGamingMode.IsChecked ?? false;
-        _config.EnableWlanOptimizer = val;
-        TrySaveConfig();
-        _logAppender(val
-            ? "[+] Parameter 'EnableWlanOptimizer': ENABLED (Wi-Fi background scan suppression active)"
-            : "[*] Parameter 'EnableWlanOptimizer': DISABLED (checkbox unchecked)");
-        var res = WlanOptimizerService.SetGamingMode(val);
-        foreach (var l in res.Logs) _logAppender(l);
-        UpdateOverviewState();
-    }
-
-    private void SwMetricOpt_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingSwitches) return;
-        bool val = SwMetricOpt.IsChecked ?? false;
-        _config.EnableMetricOptimization = val;
-        TrySaveConfig();
-        _logAppender(val
-            ? "[+] Parameter 'EnableMetricOptimization': ENABLED (automatic adapter priority routing active)"
-            : "[*] Parameter 'EnableMetricOptimization': DISABLED (interface priority routing stopped)");
-        _monitor.TriggerManualCheck();
-    }
-
-    private void SwStartup_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingSwitches) return;
-        bool val = SwStartup.IsChecked ?? false;
-        if (val) StartupManager.EnableStartup();
-        else StartupManager.DisableStartup();
-        bool enabled = StartupManager.IsStartupEnabled();
-        SwStartup.IsChecked = enabled;
-        _logAppender(enabled
-            ? "[+] Parameter 'Startup': ENABLED"
-            : "[*] Parameter 'Startup': DISABLED (checkbox unchecked)");
-        _logAppender(enabled
-            ? "[+] System task verified: Windows Task Scheduler -> 'PingArmor' task active (launch on logon with highest privileges)"
-            : "[*] System task verified: Windows Task Scheduler -> 'PingArmor' task removed");
-    }
-
-    private void SwRestoreOnExit_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingSwitches) return;
-        bool val = SwRestoreOnExit.IsChecked ?? false;
-        _config.RestoreOnExit = val;
-        TrySaveConfig();
-        _logAppender(val
-            ? "[+] Parameter 'RestoreOnExit': ENABLED (system settings will revert when PingArmor exits)"
-            : "[*] Parameter 'RestoreOnExit': DISABLED (changes will persist when PingArmor exits)");
-    }
-
-    private void SwNotifications_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingSwitches) return;
-        bool val = SwNotifications.IsChecked ?? false;
-        _config.ShowNotifications = val;
-        TrySaveConfig();
-        _logAppender(val
-            ? "[+] Parameter 'ShowNotifications': ENABLED (system notifications active)"
-            : "[*] Parameter 'ShowNotifications': DISABLED (system notifications muted)");
-    }
-
-    private void SwDisableIPv6_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingSwitches) return;
-        bool val = SwDisableIPv6.IsChecked ?? false;
-        _config.DisableIPv6OnWifi = val;
-        TrySaveConfig();
-        _logAppender(val
-            ? "[+] Parameter 'DisableIPv6OnWifi': ENABLED (disabling IPv6 on Wi-Fi adapters)"
-            : "[*] Parameter 'DisableIPv6OnWifi': DISABLED (restoring IPv6 on Wi-Fi adapters)");
-        var logs = _engine.SetIPv6OnWifiAdapters(val);
-        foreach (var l in logs) _logAppender(l);
-    }
-
-    private void SwDisableSmartDns_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingSwitches) return;
-        bool val = SwDisableSmartDns.IsChecked ?? false;
-        _config.DisableSmartNameResolution = val;
-        TrySaveConfig();
-
-        var status = DnsHelper.ConfigureSmartDnsPolicy(val);
-        _logAppender(val
-            ? "[+] Parameter 'DisableSmartNameResolution': ENABLED (optimization active)"
-            : "[*] Parameter 'DisableSmartNameResolution': DISABLED (checkbox unchecked)");
-        _logAppender(val
-            ? $"[+] System registry verified: {status}"
-            : $"[*] System registry verified: {status}");
-    }
-
-    private void SwDisableWpad_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingSwitches) return;
-        bool val = SwDisableWpad.IsChecked ?? false;
-        _config.DisableWpad = val;
-        TrySaveConfig();
-
-        var status = DnsHelper.ConfigureWpadPolicy(val);
-        _logAppender(val
-            ? "[+] Parameter 'DisableWpad' (WPAD): ENABLED (optimization active)"
-            : "[*] Parameter 'DisableWpad' (WPAD): DISABLED (checkbox unchecked)");
-        _logAppender(val
-            ? $"[+] System registry verified: {status}"
-            : $"[*] System registry verified: {status}");
-    }
-
-    private void SwFlushDns_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isUpdatingSwitches) return;
-        bool val = SwFlushDns.IsChecked ?? false;
-        _config.FlushDnsOnChange = val;
-        TrySaveConfig();
-        _logAppender(val
-            ? "[+] Parameter 'FlushDnsOnChange': ENABLED (automatic DNS cache flushing on network change)"
-            : "[*] Parameter 'FlushDnsOnChange': DISABLED (checkbox unchecked)");
-        if (val)
-        {
-            bool flushed = DnsHelper.FlushDnsCache();
-            _logAppender(flushed
-                ? "[+] System DNS cache verified: successfully flushed (DnsFlushResolverCache)"
-                : "[-] Failed to flush system DNS cache");
-        }
-    }
-
-    private void BtnLang_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is System.Windows.Controls.Button btn && btn.Tag is string langCode)
-        {
-            var parsed = AppLanguageExtensions.FromCode(langCode);
-            _config.Language = parsed.ToCode();
-            TrySaveConfig();
-            LocalizationService.SetLanguage(parsed);
-        }
-    }
-
-    private void UpdateLanguageButtonHighlight()
-    {
-        var cur = LocalizationService.CurrentLanguage;
-        HighlightChoiceButton(BtnLangRu, cur == AppLanguage.Ru);
-        HighlightChoiceButton(BtnLangEn, cur == AppLanguage.En);
-        HighlightChoiceButton(BtnLangKk, cur == AppLanguage.Kk);
-    }
-
-    private static void HighlightChoiceButton(Wpf.Ui.Controls.Button btn, bool active)
-    {
-        btn.Appearance = active ? ControlAppearance.Primary : ControlAppearance.Secondary;
-    }
-
-    private void BtnTheme_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is System.Windows.Controls.Button btn && btn.Tag is string mode)
-        {
-            _config.Theme = mode;
-            TrySaveConfig();
-            ThemeService.Apply(mode);
-            UpdateThemeButtonHighlight();
-            _logAppender($"[*] Theme changed: {mode}");
-        }
-    }
-
-    private void UpdateThemeButtonHighlight()
-    {
-        var mode = _config.Theme;
-        HighlightChoiceButton(BtnThemeSystem, string.Equals(mode, ThemeService.ModeSystem, StringComparison.OrdinalIgnoreCase));
-        HighlightChoiceButton(BtnThemeLight, string.Equals(mode, ThemeService.ModeLight, StringComparison.OrdinalIgnoreCase));
-        HighlightChoiceButton(BtnThemeDark, string.Equals(mode, ThemeService.ModeDark, StringComparison.OrdinalIgnoreCase));
-    }
 
     #endregion
 
@@ -526,40 +300,8 @@ public partial class DashboardWindow : FluentWindow
 
     private void OnLanguageChanged()
     {
-        UpdateLocalization();
         UpdateOverviewState();
         UpdateRollbackCard();
-        SyncTuningSwitches();
-    }
-
-    private void UpdateLocalization()
-    {
-        var s = LocalizationService.Strings;
-
-        SetCardHeader(CardGamingMode, s.GamingMode, s.WlanOptimizerDesc);
-        SetCardHeader(CardMetricOpt, s.MetricOptimizationTitle, s.MetricOptimizationDesc);
-        SetCardHeader(CardStartup, s.StartupWithWindows, s.StartupDesc);
-        SetCardHeader(CardRestoreOnExit, s.RestoreOnExit, s.RestoreOnExitDesc);
-        SetCardHeader(CardNotifications, s.Notifications, s.NotificationsDesc);
-        SetCardHeader(CardDisableIPv6, s.DisableIPv6OnWifiTitle, s.DisableIPv6OnWifiDesc);
-        SetCardHeader(CardDisableSmartDns, s.DisableSmartDnsTitle, s.DisableSmartDnsDesc);
-        SetCardHeader(CardDisableWpad, s.DisableWpadTitle, s.DisableWpadDesc);
-        SetCardHeader(CardFlushDns, s.FlushDnsTitle, s.FlushDnsDesc);
-        SetCardHeader(CardLang, s.LanguageInterfaceTitle, s.LanguageInterfaceDesc);
-        SetCardHeader(CardTheme, s.ThemeTitle, s.ThemeDesc);
-
-        TxtAboutApp.Text = $"PingArmor v{AppVersion.Current}";
-
-        UpdateLanguageButtonHighlight();
-        UpdateThemeButtonHighlight();
-    }
-
-    private static void SetCardHeader(CardControl card, string title, string description)
-    {
-        var sp = new StackPanel();
-        sp.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold, FontSize = 14 });
-        sp.Children.Add(new TextBlock { Text = description, Foreground = ThemeBrush("TextFillColorSecondaryBrush"), FontSize = 12, Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap });
-        card.Header = sp;
     }
 
     private static System.Windows.Media.Brush ThemeBrush(string key)

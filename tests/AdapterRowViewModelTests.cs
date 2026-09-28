@@ -8,7 +8,7 @@ namespace PingArmor.Tests;
 
 public class AdapterRowViewModelTests
 {
-    private static readonly object TestLock = new();
+    private static readonly object TestLock = TestSync.Localization;
 
     private static NetworkAdapterInfo CreateAdapter(AdapterType type = AdapterType.PhysicalEthernet)
         => new()

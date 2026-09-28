@@ -41,6 +41,8 @@ public class WlanOptimizerTests : IDisposable
         {
             return new OptimizationResult { Success = true };
         }
+
+        public List<string> SetIPv6OnWifiAdapters(bool disable) => new();
     }
 
     #region Win32 WLAN Native API Constants Tests

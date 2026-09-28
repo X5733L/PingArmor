@@ -290,7 +290,7 @@ public class TrayApplicationContext : ApplicationContext
         {
             if (_dashboardWindow == null)
             {
-                _dashboardWindow = new DashboardWindow(_config, _engine, _monitor, AppendLog);
+                _dashboardWindow = new DashboardWindow(_config, _monitor, AppendLog);
                 _dashboardWindow.Closed += (s, e) => _dashboardWindow = null;
                 if (_lastPlan != null)
                 {

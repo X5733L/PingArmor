@@ -65,7 +65,7 @@ public class LocalizationTests : IDisposable
         Assert.Equal(expected, result);
     }
 
-    private static readonly object TestLock = new();
+    private static readonly object TestLock = TestSync.Localization;
 
     [Fact]
     public void LocalizationService_SetLanguage_FiresEventAndUpdatesStrings()

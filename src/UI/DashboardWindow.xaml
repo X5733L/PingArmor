@@ -153,7 +153,7 @@
                     <views:AdaptersView x:Name="AdaptersPage" Grid.Row="1" />
                 </Grid>
 
-                <!-- Page 3: Settings (Tuning) -->
+                                <!-- Page 3: Settings (Tuning) -->
                 <Grid x:Name="PageSettings" Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -162,120 +162,10 @@
 
                     <TextBlock x:Name="TxtSettingsTitle" Grid.Row="0" Text="{Binding Texts.NavTuning}" Style="{StaticResource PageTitleTextStyle}" Margin="0,0,0,16" />
 
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="0,0,8,0">
-                            <!-- Group 1: Сетевые настройки и оптимизация Windows -->
-                            <TextBlock x:Name="TxtSettingsGroupNetwork" Text="{Binding Texts.SettingsGroupNetwork}" Style="{StaticResource SectionHeaderTextStyle}" Margin="0,4,0,12" />
-
-                            <ui:CardControl x:Name="CardMetricOpt" Header="Оптимизировать приоритеты сети" Margin="0,0,0,10">
-                                <ui:CardControl.Icon>
-                                    <ui:SymbolIcon Symbol="Flash24" />
-                                </ui:CardControl.Icon>
-                                <ui:ToggleSwitch x:Name="SwMetricOpt" Click="SwMetricOpt_Click" />
-                            </ui:CardControl>
-
-                            <ui:CardControl x:Name="CardGamingMode" Header="Отключение фонового поиска Wi-Fi" Margin="0,0,0,10">
-                                <ui:CardControl.Icon>
-                                    <ui:SymbolIcon Symbol="WifiSettings20" />
-                                </ui:CardControl.Icon>
-                                <ui:ToggleSwitch x:Name="SwGamingMode" Click="SwGamingMode_Click" />
-                            </ui:CardControl>
-
-                            <ui:CardControl x:Name="CardDisableIPv6" Header="Отключение IPv6 на адаптерах Wi-Fi" Margin="0,0,0,10">
-                                <ui:CardControl.Icon>
-                                    <ui:SymbolIcon Symbol="ShieldProhibited24" />
-                                </ui:CardControl.Icon>
-                                <ui:ToggleSwitch x:Name="SwDisableIPv6" Click="SwDisableIPv6_Click" />
-                            </ui:CardControl>
-
-                            <ui:CardControl x:Name="CardDisableSmartDns" Header="Отключение Smart Name Resolution (DNS)" Margin="0,0,0,10">
-                                <ui:CardControl.Icon>
-                                    <ui:SymbolIcon Symbol="Globe24" />
-                                </ui:CardControl.Icon>
-                                <ui:ToggleSwitch x:Name="SwDisableSmartDns" Click="SwDisableSmartDns_Click" />
-                            </ui:CardControl>
-
-                            <ui:CardControl x:Name="CardDisableWpad" Header="Отключение автоопределения прокси (WPAD)" Margin="0,0,0,10">
-                                <ui:CardControl.Icon>
-                                    <ui:SymbolIcon Symbol="ShieldCheckmark24" />
-                                </ui:CardControl.Icon>
-                                <ui:ToggleSwitch x:Name="SwDisableWpad" Click="SwDisableWpad_Click" />
-                            </ui:CardControl>
-
-                            <ui:CardControl x:Name="CardFlushDns" Header="Автоматическая очистка кэша DNS" Margin="0,0,0,10">
-                                <ui:CardControl.Icon>
-                                    <ui:SymbolIcon Symbol="Broom24" />
-                                </ui:CardControl.Icon>
-                                <ui:ToggleSwitch x:Name="SwFlushDns" Click="SwFlushDns_Click" />
-                            </ui:CardControl>
-
-                            <!-- Group 2: Настройки программы PingArmor -->
-                            <TextBlock x:Name="TxtSettingsGroupApp" Text="{Binding Texts.SettingsGroupApp}" Style="{StaticResource SectionHeaderTextStyle}" Margin="0,16,0,12" />
-
-                            <ui:CardControl x:Name="CardStartup" Header="Автозапуск при входе в Windows" Margin="0,0,0,10">
-                                <ui:CardControl.Icon>
-                                    <ui:SymbolIcon Symbol="Power24" />
-                                </ui:CardControl.Icon>
-                                <ui:ToggleSwitch x:Name="SwStartup" Click="SwStartup_Click" />
-                            </ui:CardControl>
-
-                            <ui:CardControl x:Name="CardRestoreOnExit" Header="Безопасный выход (откат настроек при закрытии)" Margin="0,0,0,10">
-                                <ui:CardControl.Icon>
-                                    <ui:SymbolIcon Symbol="ArrowReset24" />
-                                </ui:CardControl.Icon>
-                                <ui:ToggleSwitch x:Name="SwRestoreOnExit" Click="SwRestoreOnExit_Click" />
-                            </ui:CardControl>
-
-                            <ui:CardControl x:Name="CardNotifications" Header="Всплывающие уведомления" Margin="0,0,0,10">
-                                <ui:CardControl.Icon>
-                                    <ui:SymbolIcon Symbol="Alert24" />
-                                </ui:CardControl.Icon>
-                                <ui:ToggleSwitch x:Name="SwNotifications" Click="SwNotifications_Click" />
-                            </ui:CardControl>
-
-                            <!-- Language Switcher Card -->
-                            <ui:CardControl x:Name="CardLang" Header="Язык интерфейса" Margin="0,0,0,10">
-                                <ui:CardControl.Icon>
-                                    <ui:SymbolIcon Symbol="LocalLanguage24" />
-                                </ui:CardControl.Icon>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:Button x:Name="BtnLangRu" Content="RU" Margin="0,0,4,0" Click="BtnLang_Click" Tag="ru" />
-                                    <ui:Button x:Name="BtnLangEn" Content="EN" Margin="0,0,4,0" Click="BtnLang_Click" Tag="en" />
-                                    <ui:Button x:Name="BtnLangKk" Content="KK" Click="BtnLang_Click" Tag="kk" />
-                                </StackPanel>
-                            </ui:CardControl>
-
-                            <!-- Theme Switcher Card -->
-                            <ui:CardControl x:Name="CardTheme" Header="Оформление" Margin="0,0,0,10">
-                                <ui:CardControl.Icon>
-                                    <ui:SymbolIcon Symbol="DarkTheme24" />
-                                </ui:CardControl.Icon>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:Button x:Name="BtnThemeSystem" Content="{Binding Texts.ThemeSystem}" Margin="0,0,4,0" Click="BtnTheme_Click" Tag="System" />
-                                    <ui:Button x:Name="BtnThemeLight" Content="{Binding Texts.ThemeLight}" Margin="0,0,4,0" Click="BtnTheme_Click" Tag="Light" />
-                                    <ui:Button x:Name="BtnThemeDark" Content="{Binding Texts.ThemeDark}" Click="BtnTheme_Click" Tag="Dark" />
-                                </StackPanel>
-                            </ui:CardControl>
-
-                            <!-- About / Credits Card -->
-                            <ui:Card Margin="0,0,0,10" Padding="14">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <ui:SymbolIcon Symbol="Info24" FontSize="20" Margin="0,0,14,0" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock x:Name="TxtAboutApp" Text="PingArmor" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                                        <TextBlock x:Name="TxtAboutIconCredit" Text="{Binding Texts.AboutIconCredit}" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,2,0,0" />
-                                    </StackPanel>
-                                </Grid>
-                            </ui:Card>
-                        </StackPanel>
-                    </ScrollViewer>
+                    <views:SettingsView x:Name="SettingsPage" Grid.Row="1" />
                 </Grid>
 
-                <!-- Page 4: Rollback & Reset -->
+<!-- Page 4: Rollback & Reset -->
                 <Grid x:Name="PageRollback" Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />

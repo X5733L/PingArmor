@@ -8,4 +8,5 @@ public interface INetworkEngine
 {
     List<NetworkAdapterInfo> GetAdapters(CancellationToken cancellationToken = default);
     OptimizationResult ApplyPlan(OptimizationPlan plan, bool force = false, CancellationToken cancellationToken = default);
+    List<string> SetIPv6OnWifiAdapters(bool disable);
 }
