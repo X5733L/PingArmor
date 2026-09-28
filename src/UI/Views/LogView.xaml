@@ -41,7 +41,7 @@
         </StackPanel>
 
         <!-- Actions -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,12">
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,12">
             <ui:Button Appearance="Primary" Command="{Binding OptimizeCommand}" Content="{Binding Texts.OptimizeNowShort}" Margin="0,0,8,0">
                 <ui:Button.Icon>
                     <ui:SymbolIcon Symbol="Flash24" />
