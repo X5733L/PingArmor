@@ -3,12 +3,14 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Windows.Forms;
+using H.NotifyIcon;
+using H.NotifyIcon.Core;
 using PingArmor.Config;
 using PingArmor.Localization;
 using PingArmor.Services;
 using PingArmor.UI;
 using PingArmor.UI.Services;
+using PingArmor.UI.ViewModels;
 
 namespace PingArmor;
 
@@ -45,7 +47,8 @@ public static class Program
 
         try
         {
-            var exePath = Environment.ProcessPath ?? Application.ExecutablePath;
+            var exePath = Environment.ProcessPath;
+            if (string.IsNullOrEmpty(exePath)) return true;
             var psi = new ProcessStartInfo
             {
                 FileName = exePath,
@@ -309,22 +312,17 @@ public static class Program
             ShowWindow(consoleHandle, SW_HIDE);
         }
 
-        Application.EnableVisualStyles();
-        Application.SetCompatibleTextRenderingDefault(false);
-
         using var mutex = new Mutex(true, MutexName, out bool isNewInstance);
         if (!isNewInstance)
         {
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 s.AlreadyRunning,
                 s.AppTitle,
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Information
             );
             return 0;
         }
-
-        SetupProcessExitHandler(config);
 
         var wpfApp = System.Windows.Application.Current as App;
         if (wpfApp == null)
@@ -339,15 +337,33 @@ public static class Program
         // Apply the configured theme before any window is created.
         ThemeService.Initialize(config.Theme);
 
+        SetupProcessExitHandler(config);
+
         using var monitor = new NetworkMonitor(engine, config);
-        using var trayContext = new TrayApplicationContext(config, engine, monitor);
+        AppServices.Initialize(config, engine, monitor, LogService.Log);
+
+        var tray = new TrayIconViewModel(config, monitor);
+        var taskbarIcon = (TaskbarIcon)wpfApp.Resources["TrayIcon"];
+        taskbarIcon.DataContext = tray;
+        tray.AttachNotifier((title, message, isWarning) =>
+            taskbarIcon.ShowNotification(title, message, isWarning ? NotificationIcon.Warning : NotificationIcon.Info));
+        taskbarIcon.ForceCreate();
 
         if (openDashboard)
         {
-            trayContext.ShowDashboard();
+            tray.ShowDashboard(0);
         }
 
-        wpfApp.Run();
+        try
+        {
+            wpfApp.Run();
+        }
+        finally
+        {
+            taskbarIcon.Dispose();
+            tray.Dispose();
+        }
+
         return 0;
     }
 
