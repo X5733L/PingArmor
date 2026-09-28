@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using PingArmor.Config;
 using PingArmor.Models;
 using PingArmor.Services;
@@ -43,7 +45,12 @@ public class BackupExitTests : IDisposable
         Assert.True(File.Exists(_tempBackupPath));
 
         // Act: restore with deleteBackupAfterRestore = true
-        var logs = BackupService.RestoreFromBackup(_tempBackupPath, deleteBackupAfterRestore: true);
+        // Inject fakes so the test never mutates the host registry or spawns processes.
+        var logs = BackupService.RestoreFromBackup(
+            _tempBackupPath,
+            deleteBackupAfterRestore: true,
+            processRunner: new NoopProcessRunner(),
+            registry: new InMemoryRegistryAccessor());
 
         // Assert
         Assert.False(File.Exists(_tempBackupPath));
@@ -68,7 +75,11 @@ public class BackupExitTests : IDisposable
         Assert.True(File.Exists(_tempBackupPath));
 
         // Act: restore with deleteBackupAfterRestore = false
-        var logs = BackupService.RestoreFromBackup(_tempBackupPath, deleteBackupAfterRestore: false);
+        var logs = BackupService.RestoreFromBackup(
+            _tempBackupPath,
+            deleteBackupAfterRestore: false,
+            processRunner: new NoopProcessRunner(),
+            registry: new InMemoryRegistryAccessor());
 
         // Assert: file should still exist
         Assert.True(File.Exists(_tempBackupPath));
@@ -96,4 +107,16 @@ public class BackupExitTests : IDisposable
         }
         catch { }
     }
+}
+
+/// <summary>
+/// Process runner stub that never touches the host system.
+/// </summary>
+internal sealed class NoopProcessRunner : IProcessRunner
+{
+    public ProcessResult Run(string fileName, string arguments, int timeoutMs) =>
+        new(0, string.Empty, string.Empty, false);
+
+    public Task<ProcessResult> RunAsync(string fileName, string arguments, int timeoutMs, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Run(fileName, arguments, timeoutMs));
 }

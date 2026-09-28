@@ -6,6 +6,11 @@ namespace PingArmor.Services;
 
 public static class DnsHelper
 {
+    internal const string WpadSettingsKey = @"Software\Microsoft\Windows\CurrentVersion\Internet Settings";
+    internal const string WpadConnectionsKey = @"Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections";
+    internal const string SmartDnsPolicyKey = @"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient";
+    internal const string SmartDnsValueName = "DisableSmartNameResolution";
+
     [DllImport("dnsapi.dll", EntryPoint = "DnsFlushResolverCache")]
     private static extern int DnsFlushResolverCache();
 
@@ -38,43 +43,29 @@ public static class DnsHelper
         }
     }
 
-    public static string ConfigureWpadPolicy(bool disableWpad)
+    public static string ConfigureWpadPolicy(bool disableWpad, IRegistryAccessor? registry = null)
     {
+        registry ??= RegistryAccessor.Default;
         try
         {
-            using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings", true);
-            if (key != null)
-            {
-                if (disableWpad)
-                {
-                    key.SetValue("AutoDetect", 0, RegistryValueKind.DWord);
-                }
-                else
-                {
-                    key.SetValue("AutoDetect", 1, RegistryValueKind.DWord);
-                }
-            }
+            registry.WriteDword(RegistryHive.CurrentUser, WpadSettingsKey, "AutoDetect", disableWpad ? 0 : 1);
 
             // Also update Connections\DefaultConnectionSettings and SavedLegacySettings byte 8
-            using var connKey = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections", true);
-            if (connKey != null)
-            {
-                UpdateConnectionSettingsBlob(connKey, "DefaultConnectionSettings", disableWpad);
-                UpdateConnectionSettingsBlob(connKey, "SavedLegacySettings", disableWpad);
-            }
+            UpdateConnectionSettingsBlob(registry, "DefaultConnectionSettings", disableWpad);
+            UpdateConnectionSettingsBlob(registry, "SavedLegacySettings", disableWpad);
 
             RefreshInternetSettings();
         }
         catch { }
 
-        return GetWpadStatusDescription();
+        return GetWpadStatusDescription(registry);
     }
 
-    private static void UpdateConnectionSettingsBlob(RegistryKey key, string valueName, bool disableWpad)
+    private static void UpdateConnectionSettingsBlob(IRegistryAccessor registry, string valueName, bool disableWpad)
     {
         try
         {
-            if (key.GetValue(valueName) is byte[] data && data.Length > 8)
+            if (registry.ReadBinary(RegistryHive.CurrentUser, WpadConnectionsKey, valueName) is { Length: > 8 } data)
             {
                 if (disableWpad)
                 {
@@ -84,21 +75,21 @@ public static class DnsHelper
                 {
                     data[8] = (byte)(data[8] | 0x08);  // set auto-detect bit (WPAD enabled)
                 }
-                key.SetValue(valueName, data, RegistryValueKind.Binary);
+                registry.WriteBinary(RegistryHive.CurrentUser, WpadConnectionsKey, valueName, data);
             }
         }
         catch { }
     }
 
-    public static string GetWpadStatusDescription()
+    public static string GetWpadStatusDescription(IRegistryAccessor? registry = null)
     {
+        registry ??= RegistryAccessor.Default;
         try
         {
-            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings");
-            var val = key?.GetValue("AutoDetect");
-            if (val is int intVal)
+            var val = registry.ReadDword(RegistryHive.CurrentUser, WpadSettingsKey, "AutoDetect");
+            if (val.HasValue)
             {
-                return intVal == 0
+                return val.Value == 0
                     ? "HKCU\\...\\Internet Settings\\AutoDetect = 0 (WPAD proxy auto-detection is DISABLED)"
                     : "HKCU\\...\\Internet Settings\\AutoDetect = 1 (WPAD proxy auto-detection is ENABLED)";
             }
@@ -110,35 +101,32 @@ public static class DnsHelper
         }
     }
 
-    public static string ConfigureSmartDnsPolicy(bool disableSmartDns)
+    public static string ConfigureSmartDnsPolicy(bool disableSmartDns, IRegistryAccessor? registry = null)
     {
+        registry ??= RegistryAccessor.Default;
         try
         {
-            using var key = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient", true);
-            if (key != null)
+            if (disableSmartDns)
             {
-                if (disableSmartDns)
-                {
-                    key.SetValue("DisableSmartNameResolution", 1, RegistryValueKind.DWord);
-                }
-                else
-                {
-                    key.DeleteValue("DisableSmartNameResolution", throwOnMissingValue: false);
-                }
+                registry.WriteDword(RegistryHive.LocalMachine, SmartDnsPolicyKey, SmartDnsValueName, 1);
+            }
+            else
+            {
+                registry.DeleteValue(RegistryHive.LocalMachine, SmartDnsPolicyKey, SmartDnsValueName);
             }
         }
         catch { }
 
-        return GetSmartDnsStatusDescription();
+        return GetSmartDnsStatusDescription(registry);
     }
 
-    public static string GetSmartDnsStatusDescription()
+    public static string GetSmartDnsStatusDescription(IRegistryAccessor? registry = null)
     {
+        registry ??= RegistryAccessor.Default;
         try
         {
-            using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient");
-            var val = key?.GetValue("DisableSmartNameResolution");
-            if (val is int intVal && intVal == 1)
+            var val = registry.ReadDword(RegistryHive.LocalMachine, SmartDnsPolicyKey, SmartDnsValueName);
+            if (val == 1)
             {
                 return "HKLM\\...\\DNSClient\\DisableSmartNameResolution = 1 (Smart Name Resolution is DISABLED)";
             }
@@ -150,10 +138,10 @@ public static class DnsHelper
         }
     }
 
-    public static bool ConfigureDnsPolicies(bool disableSmartNameResolution, bool disableWpad)
+    public static bool ConfigureDnsPolicies(bool disableSmartNameResolution, bool disableWpad, IRegistryAccessor? registry = null)
     {
-        ConfigureSmartDnsPolicy(disableSmartNameResolution);
-        ConfigureWpadPolicy(disableWpad);
+        ConfigureSmartDnsPolicy(disableSmartNameResolution, registry);
+        ConfigureWpadPolicy(disableWpad, registry);
         return true;
     }
 }

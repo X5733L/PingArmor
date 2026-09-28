@@ -311,5 +311,58 @@ public class MetricDecisionEngineTests
         Assert.False(plan.DisableWpad);
         Assert.False(plan.FlushDns);
     }
+
+    [Fact]
+    public void Evaluate_WhenMetricCouldNotBeRead_AddsWarningAndDoesNotClaimOptimal()
+    {
+        var wifi = new NetworkAdapterInfo
+        {
+            InterfaceIndex = 4,
+            Name = "Wi-Fi",
+            Type = AdapterType.PhysicalWiFi,
+            IsPhysical = true,
+            IsUp = true,
+            HasInternet = true,
+            CurrentIPv4Metric = 10,
+            AutomaticMetric = false
+        };
+
+        var unreadable = new NetworkAdapterInfo
+        {
+            InterfaceIndex = 9,
+            Name = "Mystery Adapter",
+            Type = AdapterType.PhysicalEthernet,
+            IsPhysical = true,
+            IsUp = true,
+            // CurrentIPv4Metric stays -1 => metric could not be read
+        };
+
+        var plan = MetricDecisionEngine.Evaluate(new[] { wifi, unreadable }, _config);
+
+        Assert.False(plan.NeedsOptimization);
+        Assert.Single(plan.Warnings);
+        Assert.Contains("could not be read", plan.Summary);
+    }
+
+    [Fact]
+    public void Evaluate_WhenAutomaticMetricEnabled_RewritesPrimaryEvenIfMetricMatches()
+    {
+        var wifi = new NetworkAdapterInfo
+        {
+            InterfaceIndex = 4,
+            Name = "Wi-Fi",
+            Type = AdapterType.PhysicalWiFi,
+            IsPhysical = true,
+            IsUp = true,
+            HasInternet = true,
+            CurrentIPv4Metric = 10,
+            AutomaticMetric = true // Windows may override this at any time
+        };
+
+        var plan = MetricDecisionEngine.Evaluate(new[] { wifi }, _config);
+
+        Assert.True(plan.NeedsOptimization);
+        Assert.Contains(plan.Actions, a => a.InterfaceIndex == 4 && a.TargetMetric == 10);
+    }
 }
 

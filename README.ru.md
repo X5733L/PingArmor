@@ -130,29 +130,35 @@ PingArmor.exe --lang kk    # Қазақша
 
 ```json
 {
-  "CheckIntervalSeconds": 10,
+  "CheckIntervalSeconds": 30,
+  "EnableMetricOptimization": true,
   "PrimaryEthernetMetric": 5,
   "PrimaryWifiMetric": 10,
   "VirtualAdapterMetric": 500,
   "DisconnectedAdapterMetric": 100,
+  "SecondaryPhysicalMetric": 50,
   "DisableSmartNameResolution": true,
   "DisableWpad": true,
   "FlushDnsOnChange": true,
   "ShowNotifications": true,
   "DisableIPv6OnWifi": true,
   "EnableWlanOptimizer": true,
+  "RestoreOnExit": true,
   "Language": "ru",
   "ExcludeAdapters": []
 }
 ```
 
 ### Назначение параметров:
-- `CheckIntervalSeconds`: интервал проверки (сек) для отслеживания фоновых изменений сторонними программами.
+- `CheckIntervalSeconds`: интервал проверки (сек) для отслеживания фоновых изменений сторонними программами (по умолчанию `30`).
+- `EnableMetricOptimization`: главный переключатель автоматической приоритизации интерфейсов (по умолчанию `true`).
 - `PrimaryEthernetMetric`: метрика для активного Ethernet (по умолчанию `5`).
 - `PrimaryWifiMetric`: метрика для активного Wi-Fi (по умолчанию `10`).
 - `VirtualAdapterMetric`: метрика для VPN / виртуальных адаптеров (по умолчанию `500`).
 - `DisconnectedAdapterMetric`: метрика для физических портов без кабеля (по умолчанию `100`).
+- `SecondaryPhysicalMetric`: метрика для подключённых неосновных физических адаптеров во избежание конфликта маршрутов (по умолчанию `50`).
 - `EnableWlanOptimizer`: блокировка фонового сканирования сетей Wi-Fi (по умолчанию `true`).
+- `RestoreOnExit`: возврат метрик, DNS-политик и привязок IPv6 к снимку при выходе из PingArmor (по умолчанию `true`).
 - `ExcludeAdapters`: список исключений (адаптеры, которые не нужно трогать).
 
 ---

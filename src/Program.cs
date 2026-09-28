@@ -48,7 +48,7 @@ public static class Program
             var psi = new ProcessStartInfo
             {
                 FileName = exePath,
-                Arguments = string.Join(" ", args),
+                Arguments = string.Join(" ", args.Select(QuoteArgument)),
                 Verb = "runas",
                 UseShellExecute = true
             };
@@ -64,6 +64,13 @@ public static class Program
         }
 
         return true;
+    }
+
+    private static string QuoteArgument(string argument)
+    {
+        if (string.IsNullOrEmpty(argument)) return "\"\"";
+        if (argument.IndexOfAny(new[] { ' ', '\t', '"' }) < 0) return argument;
+        return "\"" + argument.Replace("\"", "\\\"") + "\"";
     }
 
     [STAThread]
@@ -116,11 +123,21 @@ public static class Program
         }
 
         // Ensure an initial backup of network settings exists
-        try
+        // Only for state-changing flows — read-only CLI commands must not capture a snapshot.
+        bool readOnlyCommand = cleanArgs.Length > 0 &&
+            (cleanArgs[0].Equals("--status", StringComparison.OrdinalIgnoreCase) ||
+             cleanArgs[0].Equals("-s", StringComparison.OrdinalIgnoreCase) ||
+             cleanArgs[0].Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+             cleanArgs[0].Equals("-h", StringComparison.OrdinalIgnoreCase));
+
+        if (!readOnlyCommand)
         {
-            BackupService.CreateBackupIfNotExists();
+            try
+            {
+                BackupService.CreateBackupIfNotExists();
+            }
+            catch { }
         }
-        catch { }
 
         var engine = new NetworkEngine(config);
 
@@ -161,7 +178,8 @@ public static class Program
                     var parsed = AppLanguageExtensions.FromCode(langCode);
                     LocalizationService.SetLanguage(parsed);
                     config.Language = parsed.ToCode();
-                    config.Save();
+                    try { config.Save(); }
+                    catch { }
                 }
             }
             else

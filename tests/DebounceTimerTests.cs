@@ -13,7 +13,7 @@ public class DebounceTimerTests
 {
     private class FakeNetworkEngine : INetworkEngine
     {
-        public List<NetworkAdapterInfo> GetAdapters()
+        public List<NetworkAdapterInfo> GetAdapters(CancellationToken cancellationToken = default)
         {
             return new List<NetworkAdapterInfo>
             {
@@ -30,7 +30,7 @@ public class DebounceTimerTests
             };
         }
 
-        public OptimizationResult ApplyPlan(OptimizationPlan plan, bool force = false)
+        public OptimizationResult ApplyPlan(OptimizationPlan plan, bool force = false, CancellationToken cancellationToken = default)
         {
             return new OptimizationResult { Success = true };
         }

@@ -82,6 +82,13 @@ public static class WlanOptimizerService
         public int isState;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WLAN_INTERFACE_INFO_LIST_HEADER
+    {
+        public int dwNumberOfItems;
+        public int dwIndex;
+    }
+
     [DllImport("wlanapi.dll", SetLastError = true)]
     private static extern int WlanOpenHandle(
         uint dwClientVersion,
@@ -147,10 +154,13 @@ public static class WlanOptimizerService
         {
             try
             {
-                int count = Marshal.ReadInt32(pList, 0);
-                for (int i = 0; i < count; i++)
+                var header = Marshal.PtrToStructure<WLAN_INTERFACE_INFO_LIST_HEADER>(pList);
+                int structSize = Marshal.SizeOf<WLAN_INTERFACE_INFO>();
+                int headerSize = Marshal.SizeOf<WLAN_INTERFACE_INFO_LIST_HEADER>();
+
+                for (int i = 0; i < header.dwNumberOfItems; i++)
                 {
-                    IntPtr pInfo = new IntPtr(pList.ToInt64() + 8 + i * 532);
+                    IntPtr pInfo = new IntPtr(pList.ToInt64() + headerSize + i * structSize);
                     var info = Marshal.PtrToStructure<WLAN_INTERFACE_INFO>(pInfo);
                     list.Add(info);
                 }
@@ -195,7 +205,7 @@ public static class WlanOptimizerService
     /// Uses WlanSetInterface (OpCode 2 - background_scan_enabled and OpCode 3 - media_streaming_mode).
     /// Does not reset or interrupt the active Wi-Fi connection.
     /// </summary>
-    public static WlanOptimizationResult SetGamingMode(bool enableGamingMode)
+    public static WlanOptimizationResult SetGamingMode(bool enableGamingMode, IProcessRunner? processRunner = null)
     {
         lock (_lock)
         {
@@ -205,7 +215,7 @@ public static class WlanOptimizerService
             if (handle == IntPtr.Zero)
             {
                 // Fallback to netsh if Native API is unavailable
-                return SetGamingModeFallback(enableGamingMode);
+                return SetGamingModeFallback(enableGamingMode, processRunner);
             }
 
             var ifaces = GetNativeInterfaces(handle);
@@ -334,31 +344,19 @@ public static class WlanOptimizerService
         }
     }
 
-    private static WlanOptimizationResult SetGamingModeFallback(bool enable)
+    private static WlanOptimizationResult SetGamingModeFallback(bool enable, IProcessRunner? processRunner = null)
     {
         var result = new WlanOptimizationResult();
         string val = enable ? "no" : "yes";
         try
         {
+            processRunner ??= ProcessRunner.Default;
             string? interfaceName = null;
             try
             {
-                var psiQuery = new ProcessStartInfo
-                {
-                    FileName = "netsh.exe",
-                    Arguments = "wlan show interfaces",
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                using var procQuery = Process.Start(psiQuery);
-                if (procQuery != null)
-                {
-                    string output = procQuery.StandardOutput.ReadToEnd();
-                    procQuery.WaitForExit(2000);
-                    var names = WlanInterfaceParser.ParseInterfaceNames(output);
-                    interfaceName = names.FirstOrDefault();
-                }
+                var query = processRunner.Run("netsh.exe", "wlan show interfaces", 3000);
+                var names = WlanInterfaceParser.ParseInterfaceNames(query.StandardOutput);
+                interfaceName = names.FirstOrDefault();
             }
             catch { }
 
@@ -372,17 +370,8 @@ public static class WlanOptimizerService
                 return result;
             }
 
-            var psi = new ProcessStartInfo
-            {
-                FileName = "netsh.exe",
-                Arguments = $"wlan set autoconfig enabled={val} interface=\"{interfaceName}\"",
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            using var proc = Process.Start(psi);
-            proc?.WaitForExit(2000);
-            result.Success = proc?.ExitCode == 0;
+            var r = processRunner.Run("netsh.exe", $"wlan set autoconfig enabled={val} interface={NetworkEngine.PsQuote(interfaceName)}", 4000);
+            result.Success = r.ExitCode == 0 && !r.TimedOut;
             if (result.Success)
             {
                 result.AffectedInterfaces.Add(interfaceName);

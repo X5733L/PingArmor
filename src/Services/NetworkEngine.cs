@@ -6,6 +6,7 @@ using System.Management;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading;
 using PingArmor.Config;
 using PingArmor.Models;
 
@@ -14,16 +15,26 @@ namespace PingArmor.Services;
 public class NetworkEngine : INetworkEngine
 {
     private readonly AppConfig _config;
+    private readonly IProcessRunner _runner;
+    private readonly IRegistryAccessor _registry;
+    private readonly OptimizationLedger _ledger;
 
-    public NetworkEngine(AppConfig config)
+    public NetworkEngine(
+        AppConfig config,
+        IProcessRunner? processRunner = null,
+        IRegistryAccessor? registryAccessor = null,
+        OptimizationLedger? ledger = null)
     {
         _config = config;
+        _runner = processRunner ?? ProcessRunner.Default;
+        _registry = registryAccessor ?? RegistryAccessor.Default;
+        _ledger = ledger ?? OptimizationLedger.Default;
     }
 
     /// <summary>
     /// Collects up-to-date information on all network adapters in the system.
     /// </summary>
-    public List<NetworkAdapterInfo> GetAdapters()
+    public List<NetworkAdapterInfo> GetAdapters(CancellationToken cancellationToken = default)
     {
         var result = new Dictionary<int, NetworkAdapterInfo>();
 
@@ -31,6 +42,8 @@ public class NetworkEngine : INetworkEngine
         var nics = NetworkInterface.GetAllNetworkInterfaces();
         foreach (var nic in nics)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var ipProps = nic.GetIPProperties();
             int ifIndex = -1;
             try
@@ -80,46 +93,56 @@ public class NetworkEngine : INetworkEngine
             };
         }
 
-        // 2. Enrich with current metric values via netsh int ipv4 show interfaces
-        EnrichMetricsWithNetsh(result);
+        // 2. Enrich with current metric values (IPv4 + IPv6 + AutomaticMetric)
+        EnrichMetrics(result, cancellationToken);
 
-        // 3. Enrich with internet connectivity status via NCSI (Get-NetConnectionProfile)
+        // 3. Enrich with internet connectivity status via NCSI
         EnrichInternetStatus(result);
 
         return result.Values.OrderBy(a => a.InterfaceIndex).ToList();
     }
 
-    private void EnrichMetricsWithNetsh(Dictionary<int, NetworkAdapterInfo> map)
+    private void EnrichMetrics(Dictionary<int, NetworkAdapterInfo> map, CancellationToken cancellationToken)
     {
-        // 1. Fast in-process WMI query
+        // 1. Fast in-process WMI query (IPv4 = family 2, IPv6 = family 23)
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             try
             {
                 using var searcher = new ManagementObjectSearcher(
                     @"root\StandardCimv2",
-                    "SELECT InterfaceIndex, InterfaceMetric, ConnectionState FROM MSFT_NetIPInterface WHERE AddressFamily = 2"
+                    "SELECT InterfaceIndex, InterfaceMetric, AutomaticMetric, AddressFamily FROM MSFT_NetIPInterface"
                 );
                 using var results = searcher.Get();
                 bool foundAny = false;
                 foreach (ManagementObject obj in results)
                 {
-                    if (obj["InterfaceIndex"] != null &&
-                        int.TryParse(obj["InterfaceIndex"].ToString(), out int ifIndex) &&
-                        obj["InterfaceMetric"] != null &&
-                        int.TryParse(obj["InterfaceMetric"].ToString(), out int metric))
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (obj["InterfaceIndex"] == null ||
+                        !int.TryParse(obj["InterfaceIndex"].ToString(), out int ifIndex) ||
+                        obj["InterfaceMetric"] == null ||
+                        !int.TryParse(obj["InterfaceMetric"].ToString(), out int metric))
                     {
-                        int connState = obj["ConnectionState"] != null ? Convert.ToInt32(obj["ConnectionState"]) : 0;
-                        if (map.TryGetValue(ifIndex, out var adapter))
-                        {
-                            adapter.CurrentIPv4Metric = metric;
-                            if (connState == 1) // 1 = Connected
-                            {
-                                adapter.IsUp = true;
-                            }
-                            foundAny = true;
-                        }
+                        continue;
                     }
+
+                    if (!map.TryGetValue(ifIndex, out var adapter)) continue;
+
+                    int family = ToInt(obj["AddressFamily"], 2);
+                    bool automatic = ToBoolFlag(obj["AutomaticMetric"]);
+
+                    if (family == 23) // AF_INET6
+                    {
+                        adapter.CurrentIPv6Metric = metric;
+                    }
+                    else
+                    {
+                        adapter.CurrentIPv4Metric = metric;
+                        adapter.AutomaticMetric = automatic;
+                    }
+
+                    foundAny = true;
                 }
 
                 if (foundAny)
@@ -127,56 +150,38 @@ public class NetworkEngine : INetworkEngine
                     return; // Successfully enriched via in-process WMI
                 }
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch
             {
                 // Fall back to netsh execution below if WMI query fails
             }
         }
 
-        // 2. Fallback to netsh if WMI is unavailable
-        try
+        // 2. Fallback to netsh for IPv4 metrics (locale independent: we only parse numbers)
+        ParseNetshMetrics(map);
+    }
+
+    private void ParseNetshMetrics(Dictionary<int, NetworkAdapterInfo> map)
+    {
+        var r = _runner.Run("netsh.exe", "int ipv4 show interfaces", 4000);
+        if (r.TimedOut || string.IsNullOrEmpty(r.StandardOutput)) return;
+
+        // Data rows look like: "  4          10        1500  connected     Wi-Fi"
+        var lines = r.StandardOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var line in lines)
         {
-            var psi = new ProcessStartInfo
+            var match = Regex.Match(line.Trim(), @"^(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.+)$");
+            if (!match.Success) continue;
+
+            if (int.TryParse(match.Groups[1].Value, out int ifIndex) &&
+                int.TryParse(match.Groups[2].Value, out int metric) &&
+                map.TryGetValue(ifIndex, out var adapter))
             {
-                FileName = "netsh.exe",
-                Arguments = "int ipv4 show interfaces",
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(psi);
-            if (process == null) return;
-
-            string output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit(3000);
-
-            // Regular expression for parsing netsh output lines:
-            // "  4          10        1500  connected     Wi-Fi"
-            var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var line in lines)
-            {
-                var match = Regex.Match(line.Trim(), @"^(\d+)\s+(\d+)\s+(\d+)\s+(\w+)\s+(.+)$");
-                if (match.Success)
-                {
-                    if (int.TryParse(match.Groups[1].Value, out int ifIndex) &&
-                        int.TryParse(match.Groups[2].Value, out int metric))
-                    {
-                        if (map.TryGetValue(ifIndex, out var adapter))
-                        {
-                            adapter.CurrentIPv4Metric = metric;
-                            if (match.Groups[4].Value.Equals("connected", StringComparison.OrdinalIgnoreCase))
-                            {
-                                adapter.IsUp = true;
-                            }
-                        }
-                    }
-                }
+                adapter.CurrentIPv4Metric = metric;
             }
-        }
-        catch
-        {
-            // netsh execution error
         }
     }
 
@@ -198,8 +203,8 @@ public class NetworkEngine : INetworkEngine
                     if (obj["InterfaceIndex"] != null &&
                         int.TryParse(obj["InterfaceIndex"].ToString(), out int ifIndex))
                     {
-                        int ipv4 = obj["IPv4Connectivity"] != null ? Convert.ToInt32(obj["IPv4Connectivity"]) : 0;
-                        int ipv6 = obj["IPv6Connectivity"] != null ? Convert.ToInt32(obj["IPv6Connectivity"]) : 0;
+                        int ipv4 = ToInt(obj["IPv4Connectivity"], 0);
+                        int ipv6 = ToInt(obj["IPv6Connectivity"], 0);
                         if (map.TryGetValue(ifIndex, out var adapter))
                         {
                             // 4 = Internet in NCSI connectivity enum
@@ -223,11 +228,10 @@ public class NetworkEngine : INetworkEngine
         // 2. Fallback to PowerShell if WMI is unavailable
         try
         {
-            // Query Windows connection profile statuses
             var psi = new ProcessStartInfo
             {
                 FileName = "powershell.exe",
-                Arguments = "-NoProfile -ExecutionPolicy Bypass -Command \"Get-NetConnectionProfile | Select-Object -Property InterfaceIndex, IPv4Connectivity | ForEach-Object { \\\"$($_.InterfaceIndex):$($_.IPv4Connectivity)\\\" }\"",
+                Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Get-NetConnectionProfile | ForEach-Object { \\\"$($_.InterfaceIndex):$($_.IPv4Connectivity)\\\" }\"",
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
@@ -261,7 +265,7 @@ public class NetworkEngine : INetworkEngine
     /// <summary>
     /// Applies the metric and policy optimization plan.
     /// </summary>
-    public OptimizationResult ApplyPlan(OptimizationPlan plan, bool force = false)
+    public OptimizationResult ApplyPlan(OptimizationPlan plan, bool force = false, CancellationToken cancellationToken = default)
     {
         var result = new OptimizationResult();
 
@@ -288,12 +292,33 @@ public class NetworkEngine : INetworkEngine
 
         foreach (var action in plan.Actions)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (!force && _ledger.ShouldBackOff(action.InterfaceIndex, DateTime.UtcNow))
+            {
+                result.ActionsDeferred++;
+                result.Logs.Add($"[!] Adapter '{action.InterfaceAlias}' (id: {action.InterfaceIndex}) keeps reverting its metric. Backing off temporarily to avoid a metric war.");
+                continue;
+            }
+
             try
             {
-                // Set metrics for both IPv4 and IPv6
-                SetInterfaceMetric(action.InterfaceIndex, action.TargetMetric);
+                ApplyMetricCommands(action.InterfaceIndex, action.TargetMetric, cancellationToken);
+
+                if (!VerifyMetric(action.InterfaceIndex, action.TargetMetric, cancellationToken))
+                {
+                    result.ActionsFailed++;
+                    result.Logs.Add($"[-] Adapter '{action.InterfaceAlias}' (id: {action.InterfaceIndex}): metric was not applied (target {action.TargetMetric}). Are you running as administrator?");
+                    continue;
+                }
+
                 result.ActionsApplied++;
+                bool backedOff = _ledger.RecordApply(action.InterfaceIndex, action.InterfaceAlias, action.TargetMetric, DateTime.UtcNow);
                 result.Logs.Add($"[+] Adapter '{action.InterfaceAlias}' (id: {action.InterfaceIndex}): metric {action.CurrentMetric} -> {action.TargetMetric} ({action.Reason})");
+                if (backedOff)
+                {
+                    result.Logs.Add($"[!] Adapter '{action.InterfaceAlias}': metric rewritten {OptimizationLedger.MaxAppliesPerWindow} times within {OptimizationLedger.Window.TotalMinutes:0} min — another client is likely reverting it.");
+                }
 
                 if (action.DisableIPv6)
                 {
@@ -301,16 +326,21 @@ public class NetworkEngine : INetworkEngine
                     result.Logs.Add($"[+] Disabled IPv6 on wireless adapter '{action.InterfaceAlias}'");
                 }
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
+                result.ActionsFailed++;
                 result.Logs.Add($"[-] Failed to configure adapter '{action.InterfaceAlias}': {ex.Message}");
             }
         }
 
         // Apply DNSClient and WPAD registry policies
-        DnsHelper.ConfigureDnsPolicies(plan.DisableSmartNameResolution, plan.DisableWpad);
-        result.Logs.Add($"[+] System registry: WPAD -> {DnsHelper.GetWpadStatusDescription()}");
-        result.Logs.Add($"[+] System registry: SmartDNS -> {DnsHelper.GetSmartDnsStatusDescription()}");
+        DnsHelper.ConfigureDnsPolicies(plan.DisableSmartNameResolution, plan.DisableWpad, _registry);
+        result.Logs.Add($"[+] System registry: WPAD -> {DnsHelper.GetWpadStatusDescription(_registry)}");
+        result.Logs.Add($"[+] System registry: SmartDNS -> {DnsHelper.GetSmartDnsStatusDescription(_registry)}");
 
         // Flush system DNS resolver cache
         if (plan.FlushDns || force)
@@ -324,18 +354,105 @@ public class NetworkEngine : INetworkEngine
             result.Logs.Add("[+] All network priorities and metrics are already optimal. Optimization verified.");
         }
 
-        result.Success = true;
+        result.Success = result.ActionsFailed == 0;
+        if (!result.Success)
+        {
+            result.Error = $"{result.ActionsFailed} adapter action(s) failed.";
+        }
+
         return result;
     }
 
-    private static void SetInterfaceMetric(int interfaceIndex, int metric)
+    /// <summary>
+    /// Applies the metric to both IP families and disables automatic metric.
+    /// Process exit codes are tolerated here; the authoritative check is <see cref="VerifyMetric"/>.
+    /// </summary>
+    private void ApplyMetricCommands(int interfaceIndex, int metric, CancellationToken cancellationToken)
     {
-        // 1. Fast native configuration via netsh
-        RunProcess("netsh.exe", $"int ipv4 set interface {interfaceIndex} metric={metric}");
-        RunProcess("netsh.exe", $"int ipv6 set interface {interfaceIndex} metric={metric}");
+        // 1. Native configuration (works even if the PowerShell cmdlets are unavailable).
+        _runner.Run("netsh.exe", $"int ipv4 set interface {interfaceIndex} metric={metric}", 5000);
+        _runner.Run("netsh.exe", $"int ipv6 set interface {interfaceIndex} metric={metric}", 5000);
 
-        // 2. Ensure AutomaticMetric flag is disabled via PowerShell
-        RunProcess("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"Set-NetIPInterface -InterfaceIndex {interfaceIndex} -AutomaticMetric Disabled -InterfaceMetric {metric} -ErrorAction SilentlyContinue\"");
+        // 2. Ensure AutomaticMetric is disabled so Windows does not override us.
+        _runner.Run(
+            "powershell.exe",
+            $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Set-NetIPInterface -InterfaceIndex {interfaceIndex} -AutomaticMetric Disabled -InterfaceMetric {metric} -AddressFamily IPv4 -ErrorAction SilentlyContinue; Set-NetIPInterface -InterfaceIndex {interfaceIndex} -AutomaticMetric Disabled -InterfaceMetric {metric} -AddressFamily IPv6 -ErrorAction SilentlyContinue\"",
+            7000);
+    }
+
+    /// <summary>
+    /// Re-reads the adapter metric to verify the change actually took effect.
+    /// </summary>
+    private bool VerifyMetric(int interfaceIndex, int targetMetric, CancellationToken cancellationToken)
+    {
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (TryReadIPv4Metric(interfaceIndex, out int metric) && metric == targetMetric)
+            {
+                return true;
+            }
+
+            try
+            {
+                Task.Delay(120, cancellationToken).GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+        }
+
+        return false;
+    }
+
+    private bool TryReadIPv4Metric(int interfaceIndex, out int metric)
+    {
+        metric = -1;
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher(
+                    @"root\StandardCimv2",
+                    $"SELECT InterfaceMetric FROM MSFT_NetIPInterface WHERE AddressFamily = 2 AND InterfaceIndex = {interfaceIndex}"
+                );
+                using var results = searcher.Get();
+                foreach (ManagementObject obj in results)
+                {
+                    if (obj["InterfaceMetric"] != null &&
+                        int.TryParse(obj["InterfaceMetric"].ToString(), out int value))
+                    {
+                        metric = value;
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                // Fall through to netsh
+            }
+        }
+
+        var r = _runner.Run("netsh.exe", "int ipv4 show interfaces", 4000);
+        if (r.TimedOut || string.IsNullOrEmpty(r.StandardOutput)) return false;
+
+        foreach (var line in r.StandardOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var match = Regex.Match(line.Trim(), @"^(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.+)$");
+            if (match.Success &&
+                int.TryParse(match.Groups[1].Value, out int idx) &&
+                idx == interfaceIndex &&
+                int.TryParse(match.Groups[2].Value, out int value))
+            {
+                metric = value;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public List<string> SetIPv6OnWifiAdapters(bool disable)
@@ -376,32 +493,52 @@ public class NetworkEngine : INetworkEngine
         return logs;
     }
 
-    private static void DisableIPv6OnAdapter(string adapterName)
+    private void DisableIPv6OnAdapter(string adapterName)
     {
-        RunProcess("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"Disable-NetAdapterBinding -Name '{adapterName}' -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue\"");
+        _runner.Run(
+            "powershell.exe",
+            $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Disable-NetAdapterBinding -Name {PsQuote(adapterName)} -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue\"",
+            7000);
     }
 
-    private static void EnableIPv6OnAdapter(string adapterName)
+    private void EnableIPv6OnAdapter(string adapterName)
     {
-        RunProcess("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"Enable-NetAdapterBinding -Name '{adapterName}' -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue\"");
+        _runner.Run(
+            "powershell.exe",
+            $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Enable-NetAdapterBinding -Name {PsQuote(adapterName)} -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue\"",
+            7000);
     }
 
-    private static void RunProcess(string fileName, string args)
+    /// <summary>
+    /// Quotes a value for safe interpolation inside a single-quoted PowerShell string.
+    /// </summary>
+    internal static string PsQuote(string value) =>
+        "'" + (value ?? string.Empty).Replace("'", "''") + "'";
+
+    private static int ToInt(object? value, int fallback)
     {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = args,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            };
-            using var p = Process.Start(psi);
-            p?.WaitForExit(3000);
-        }
-        catch { }
+        if (value == null) return fallback;
+        if (value is int i) return i;
+        if (value is uint ui) return unchecked((int)ui);
+        if (value is short s) return s;
+        if (value is ushort us) return us;
+        if (value is byte b) return b;
+        return int.TryParse(value.ToString(), out int parsed) ? parsed : fallback;
+    }
+
+    private static bool ToBoolFlag(object? value)
+    {
+        if (value == null) return false;
+        if (value is bool b) return b;
+        if (value is int i) return i == 1;
+        if (value is uint ui) return ui == 1;
+        if (value is short s) return s == 1;
+        if (value is ushort us) return us == 1;
+        if (value is byte by) return by == 1;
+
+        string str = value.ToString() ?? string.Empty;
+        return str.Equals("1", StringComparison.OrdinalIgnoreCase) ||
+               str.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+               str.Equals("enabled", StringComparison.OrdinalIgnoreCase);
     }
 }

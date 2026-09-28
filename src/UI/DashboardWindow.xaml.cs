@@ -199,7 +199,7 @@ public partial class DashboardWindow : FluentWindow
 
         _adapterRows.Clear();
         var adapters = _engine.GetAdapters();
-        var excludedSet = new HashSet<string>(_config.ExcludeAdapters ?? new List<string>(), StringComparer.OrdinalIgnoreCase);
+        var excludedSet = new HashSet<string>(_config.GetExcludeSnapshot(), StringComparer.OrdinalIgnoreCase);
         var s = LocalizationService.Strings;
 
         foreach (var a in adapters)
@@ -229,27 +229,37 @@ public partial class DashboardWindow : FluentWindow
     {
         if (string.IsNullOrEmpty(adapterName)) return;
 
-        _config.ExcludeAdapters ??= new List<string>();
         if (isExcluded)
         {
-            if (!_config.ExcludeAdapters.Contains(adapterName, StringComparer.OrdinalIgnoreCase))
+            if (_config.AddExclusion(adapterName))
             {
-                _config.ExcludeAdapters.Add(adapterName);
                 _logAppender($"[*] Adapter '{adapterName}' added to exclusions.");
             }
         }
         else
         {
-            _config.ExcludeAdapters.RemoveAll(x => x.Equals(adapterName, StringComparison.OrdinalIgnoreCase));
+            _config.RemoveExclusion(adapterName);
             _logAppender($"[*] Adapter '{adapterName}' removed from exclusions.");
         }
-        _config.Save();
+        TrySaveConfig();
         _monitor.TriggerManualCheck();
     }
 
     #endregion
 
     #region Settings Page
+
+    private void TrySaveConfig()
+    {
+        try
+        {
+            _config.Save();
+        }
+        catch (Exception ex)
+        {
+            _logAppender($"[-] Failed to save configuration: {ex.Message}");
+        }
+    }
 
     public void SyncTuningSwitches()
     {
@@ -285,7 +295,7 @@ public partial class DashboardWindow : FluentWindow
         if (_isUpdatingSwitches) return;
         bool val = SwGamingMode.IsChecked ?? false;
         _config.EnableWlanOptimizer = val;
-        _config.Save();
+        TrySaveConfig();
         _logAppender(val
             ? "[+] Parameter 'EnableWlanOptimizer': ENABLED (Wi-Fi background scan suppression active)"
             : "[*] Parameter 'EnableWlanOptimizer': DISABLED (checkbox unchecked)");
@@ -299,7 +309,7 @@ public partial class DashboardWindow : FluentWindow
         if (_isUpdatingSwitches) return;
         bool val = SwMetricOpt.IsChecked ?? false;
         _config.EnableMetricOptimization = val;
-        _config.Save();
+        TrySaveConfig();
         _logAppender(val
             ? "[+] Parameter 'EnableMetricOptimization': ENABLED (automatic adapter priority routing active)"
             : "[*] Parameter 'EnableMetricOptimization': DISABLED (interface priority routing stopped)");
@@ -327,7 +337,7 @@ public partial class DashboardWindow : FluentWindow
         if (_isUpdatingSwitches) return;
         bool val = SwRestoreOnExit.IsChecked ?? false;
         _config.RestoreOnExit = val;
-        _config.Save();
+        TrySaveConfig();
         _logAppender(val
             ? "[+] Parameter 'RestoreOnExit': ENABLED (system settings will revert when PingArmor exits)"
             : "[*] Parameter 'RestoreOnExit': DISABLED (changes will persist when PingArmor exits)");
@@ -338,7 +348,7 @@ public partial class DashboardWindow : FluentWindow
         if (_isUpdatingSwitches) return;
         bool val = SwNotifications.IsChecked ?? false;
         _config.ShowNotifications = val;
-        _config.Save();
+        TrySaveConfig();
         _logAppender(val
             ? "[+] Parameter 'ShowNotifications': ENABLED (system notifications active)"
             : "[*] Parameter 'ShowNotifications': DISABLED (system notifications muted)");
@@ -349,7 +359,7 @@ public partial class DashboardWindow : FluentWindow
         if (_isUpdatingSwitches) return;
         bool val = SwDisableIPv6.IsChecked ?? false;
         _config.DisableIPv6OnWifi = val;
-        _config.Save();
+        TrySaveConfig();
         _logAppender(val
             ? "[+] Parameter 'DisableIPv6OnWifi': ENABLED (disabling IPv6 on Wi-Fi adapters)"
             : "[*] Parameter 'DisableIPv6OnWifi': DISABLED (restoring IPv6 on Wi-Fi adapters)");
@@ -362,7 +372,7 @@ public partial class DashboardWindow : FluentWindow
         if (_isUpdatingSwitches) return;
         bool val = SwDisableSmartDns.IsChecked ?? false;
         _config.DisableSmartNameResolution = val;
-        _config.Save();
+        TrySaveConfig();
 
         var status = DnsHelper.ConfigureSmartDnsPolicy(val);
         _logAppender(val
@@ -378,7 +388,7 @@ public partial class DashboardWindow : FluentWindow
         if (_isUpdatingSwitches) return;
         bool val = SwDisableWpad.IsChecked ?? false;
         _config.DisableWpad = val;
-        _config.Save();
+        TrySaveConfig();
 
         var status = DnsHelper.ConfigureWpadPolicy(val);
         _logAppender(val
@@ -394,7 +404,7 @@ public partial class DashboardWindow : FluentWindow
         if (_isUpdatingSwitches) return;
         bool val = SwFlushDns.IsChecked ?? false;
         _config.FlushDnsOnChange = val;
-        _config.Save();
+        TrySaveConfig();
         _logAppender(val
             ? "[+] Parameter 'FlushDnsOnChange': ENABLED (automatic DNS cache flushing on network change)"
             : "[*] Parameter 'FlushDnsOnChange': DISABLED (checkbox unchecked)");
@@ -413,7 +423,7 @@ public partial class DashboardWindow : FluentWindow
         {
             var parsed = AppLanguageExtensions.FromCode(langCode);
             _config.Language = parsed.ToCode();
-            _config.Save();
+            TrySaveConfig();
             LocalizationService.SetLanguage(parsed);
         }
     }

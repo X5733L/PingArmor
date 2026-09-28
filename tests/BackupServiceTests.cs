@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using Microsoft.Win32;
 using PingArmor.Models;
 using PingArmor.Services;
 using Xunit;
@@ -256,6 +257,50 @@ public class BackupServiceTests : IDisposable
                 Directory.Delete(subDir, recursive: true);
             }
         }
+    }
+
+    [Fact]
+    public void RestoreFromBackup_WithNullCollectionsInJson_DoesNotThrow()
+    {
+        string json = "{\"CreatedAt\":\"2026-01-01T00:00:00\",\"MachineName\":\"M\",\"Adapters\":null,\"Ipv6Bindings\":null,\"Registry\":null}";
+        File.WriteAllText(_tempBackupPath, json);
+
+        var logs = BackupService.RestoreFromBackup(
+            _tempBackupPath,
+            deleteBackupAfterRestore: false,
+            processRunner: new NoopProcessRunner(),
+            registry: new InMemoryRegistryAccessor());
+
+        Assert.NotNull(logs);
+        Assert.Contains(logs, l => l.Contains("restoration complete"));
+    }
+
+    [Fact]
+    public void RestoreFromBackup_WritesOriginalRegistryValuesToTargetAccessor()
+    {
+        var snapshot = new NetworkBackupSnapshot
+        {
+            CreatedAt = DateTime.Now,
+            MachineName = "TEST-PC",
+            Adapters = new(),
+            Ipv6Bindings = new(),
+            Registry = new RegistryBackup
+            {
+                DisableSmartNameResolution = 1,
+                WpadAutoDetect = 0
+            }
+        };
+        File.WriteAllText(_tempBackupPath, JsonSerializer.Serialize(snapshot));
+
+        var registry = new InMemoryRegistryAccessor();
+        BackupService.RestoreFromBackup(
+            _tempBackupPath,
+            deleteBackupAfterRestore: false,
+            processRunner: new NoopProcessRunner(),
+            registry: registry);
+
+        Assert.Equal(1, registry.ReadDword(RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient", "DisableSmartNameResolution"));
+        Assert.Equal(0, registry.ReadDword(RegistryHive.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Internet Settings", "AutoDetect"));
     }
 
     public void Dispose()

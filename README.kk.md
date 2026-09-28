@@ -130,29 +130,35 @@ PingArmor.exe --lang ru    # Русский
 
 ```json
 {
-  "CheckIntervalSeconds": 10,
+  "CheckIntervalSeconds": 30,
+  "EnableMetricOptimization": true,
   "PrimaryEthernetMetric": 5,
   "PrimaryWifiMetric": 10,
   "VirtualAdapterMetric": 500,
   "DisconnectedAdapterMetric": 100,
+  "SecondaryPhysicalMetric": 50,
   "DisableSmartNameResolution": true,
   "DisableWpad": true,
   "FlushDnsOnChange": true,
   "ShowNotifications": true,
   "DisableIPv6OnWifi": true,
   "EnableWlanOptimizer": true,
+  "RestoreOnExit": true,
   "Language": "kk",
   "ExcludeAdapters": []
 }
 ```
 
 ### Параметрлер сипаттамасы:
-- `CheckIntervalSeconds`: бөгде бағдарламалардың өзгерістерін қадағалау уақыты (секунд).
+- `CheckIntervalSeconds`: бөгде бағдарламалардың өзгерістерін қадағалау уақыты (секунд, әдепкі: `30`).
+- `EnableMetricOptimization`: интерфейстерді автоматты басымдыққа қоюдың басты қосқышы (әдепкі: `true`).
 - `PrimaryEthernetMetric`: белсенді Ethernet метрикасы (әдепкі: `5`).
 - `PrimaryWifiMetric`: белсенді Wi-Fi метрикасы (әдепкі: `10`).
 - `VirtualAdapterMetric`: VPN және виртуалды адаптерлер метрикасы (әдепкі: `500`).
 - `DisconnectedAdapterMetric`: кабель ажыратылған физикалық порттар метрикасы (әдепкі: `100`).
+- `SecondaryPhysicalMetric`: қосылған қосалқы физикалық адаптерлер метрикасы, маршрут қақтығысын болдырмау үшін (әдепкі: `50`).
 - `EnableWlanOptimizer`: Wi-Fi желілерін фонда іздеуді бұғаттау (әдепкі: `true`).
+- `RestoreOnExit`: PingArmor жабылғанда метрикаларды, DNS саясаттарын және IPv6 байланыстарын суретке қайтару (әдепкі: `true`).
 - `ExcludeAdapters`: оңтайландыру кезінде ескерілмейтін адаптерлер тізімі.
 
 ---

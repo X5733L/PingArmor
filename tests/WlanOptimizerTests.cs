@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using PingArmor.Config;
 using PingArmor.Models;
 using PingArmor.Services;
@@ -19,7 +20,7 @@ public class WlanOptimizerTests : IDisposable
 
     private class FakeNetworkEngine : INetworkEngine
     {
-        public List<NetworkAdapterInfo> GetAdapters()
+        public List<NetworkAdapterInfo> GetAdapters(CancellationToken cancellationToken = default)
         {
             return new List<NetworkAdapterInfo>
             {
@@ -36,7 +37,7 @@ public class WlanOptimizerTests : IDisposable
             };
         }
 
-        public OptimizationResult ApplyPlan(OptimizationPlan plan, bool force = false)
+        public OptimizationResult ApplyPlan(OptimizationPlan plan, bool force = false, CancellationToken cancellationToken = default)
         {
             return new OptimizationResult { Success = true };
         }

@@ -253,7 +253,8 @@ public class TrayApplicationContext : ApplicationContext
         SafeInvoke(() =>
         {
             var s = LocalizationService.Strings;
-            _notifyIcon.Icon = GetShieldIcon("green");
+            _notifyIcon.Icon = result.Success ? GetShieldIcon("green") : GetShieldIcon("orange");
+
             if (_config.ShowNotifications && result.ActionsApplied > 0)
             {
                 _notifyIcon.ShowBalloonTip(
@@ -261,6 +262,15 @@ public class TrayApplicationContext : ApplicationContext
                     s.AppTitle,
                     string.Format(s.BalloonOptimizedFormat, result.ActionsApplied),
                     ToolTipIcon.Info
+                );
+            }
+            else if (_config.ShowNotifications && !result.Success && !string.IsNullOrEmpty(result.Error))
+            {
+                _notifyIcon.ShowBalloonTip(
+                    3000,
+                    s.AppTitle,
+                    result.Error!,
+                    ToolTipIcon.Warning
                 );
             }
         });

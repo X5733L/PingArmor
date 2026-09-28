@@ -173,9 +173,18 @@ public static class BackupService
     /// </summary>
     /// <param name="path">Optional backup file path.</param>
     /// <param name="deleteBackupAfterRestore">If true, deletes the backup file upon successful restoration.</param>
+    /// <param name="processRunner">Optional process runner (injectable for tests).</param>
+    /// <param name="registry">Optional registry accessor (injectable for tests).</param>
     /// <returns>List of log messages describing what was restored.</returns>
-    public static List<string> RestoreFromBackup(string? path = null, bool deleteBackupAfterRestore = false)
+    public static List<string> RestoreFromBackup(
+        string? path = null,
+        bool deleteBackupAfterRestore = false,
+        IProcessRunner? processRunner = null,
+        IRegistryAccessor? registry = null)
     {
+        processRunner ??= ProcessRunner.Default;
+        registry ??= RegistryAccessor.Default;
+
         path = ResolveBackupPath(path);
         var logs = new List<string>();
 
@@ -188,24 +197,53 @@ public static class BackupService
 
         logs.Add($"[*] Restoring settings from backup created at {snapshot.CreatedAt:yyyy-MM-dd HH:mm:ss}...");
 
+        // Tolerate partially written / older backups where collections may be null.
+        var adapters = snapshot.Adapters ?? new List<AdapterBackup>();
+        var ipv6Bindings = snapshot.Ipv6Bindings ?? new List<Ipv6BindingBackup>();
+        var registryBackup = snapshot.Registry ?? new RegistryBackup();
+
         var psCommands = new List<string>();
 
-        // 1. Restore adapter metrics
-        foreach (var adapter in snapshot.Adapters)
+        // Interface indices can change across driver reinstall/reboot; fall back to the adapter name.
+        var currentIndices = new HashSet<int>();
+        var currentByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        if (adapters.Count > 0)
         {
             try
             {
+                foreach (var current in CaptureAdapterMetrics(processRunner))
+                {
+                    currentIndices.Add(current.InterfaceIndex);
+                    currentByName[current.Name] = current.InterfaceIndex;
+                }
+            }
+            catch { }
+        }
+
+        // 1. Restore adapter metrics
+        foreach (var adapter in adapters)
+        {
+            try
+            {
+                int index = adapter.InterfaceIndex;
+                if (currentIndices.Count > 0 && !currentIndices.Contains(index) &&
+                    currentByName.TryGetValue(adapter.Name, out int resolved))
+                {
+                    index = resolved;
+                    logs.Add($"[*] Adapter '{adapter.Name}': interface index changed ({adapter.InterfaceIndex} -> {resolved}); restoring by name.");
+                }
+
                 if (adapter.AutomaticMetric)
                 {
-                    psCommands.Add($"Set-NetIPInterface -InterfaceIndex {adapter.InterfaceIndex} -AutomaticMetric Enabled -ErrorAction SilentlyContinue");
-                    logs.Add($"[+] Adapter '{adapter.Name}' (id: {adapter.InterfaceIndex}): restored AutomaticMetric=Enabled");
+                    psCommands.Add($"Set-NetIPInterface -InterfaceIndex {index} -AutomaticMetric Enabled -ErrorAction SilentlyContinue");
+                    logs.Add($"[+] Adapter '{adapter.Name}' (id: {index}): restored AutomaticMetric=Enabled");
                 }
                 else
                 {
-                    RunProcess("netsh.exe", $"int ipv4 set interface {adapter.InterfaceIndex} metric={adapter.IPv4Metric}");
-                    RunProcess("netsh.exe", $"int ipv6 set interface {adapter.InterfaceIndex} metric={adapter.IPv4Metric}");
-                    psCommands.Add($"Set-NetIPInterface -InterfaceIndex {adapter.InterfaceIndex} -AutomaticMetric Disabled -InterfaceMetric {adapter.IPv4Metric} -ErrorAction SilentlyContinue");
-                    logs.Add($"[+] Adapter '{adapter.Name}' (id: {adapter.InterfaceIndex}): restored metric={adapter.IPv4Metric}");
+                    processRunner.Run("netsh.exe", $"int ipv4 set interface {index} metric={adapter.IPv4Metric}", 5000);
+                    processRunner.Run("netsh.exe", $"int ipv6 set interface {index} metric={adapter.IPv4Metric}", 5000);
+                    psCommands.Add($"Set-NetIPInterface -InterfaceIndex {index} -AutomaticMetric Disabled -InterfaceMetric {adapter.IPv4Metric} -ErrorAction SilentlyContinue");
+                    logs.Add($"[+] Adapter '{adapter.Name}' (id: {index}): restored metric={adapter.IPv4Metric}");
                 }
             }
             catch (Exception ex)
@@ -215,13 +253,13 @@ public static class BackupService
         }
 
         // 2. Restore IPv6 bindings
-        foreach (var binding in snapshot.Ipv6Bindings)
+        foreach (var binding in ipv6Bindings)
         {
             try
             {
                 if (binding.Ipv6Enabled)
                 {
-                    psCommands.Add($"Enable-NetAdapterBinding -Name '{binding.AdapterName}' -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue");
+                    psCommands.Add($"Enable-NetAdapterBinding -Name {NetworkEngine.PsQuote(binding.AdapterName)} -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue");
                     logs.Add($"[+] Adapter '{binding.AdapterName}': IPv6 re-enabled");
                 }
             }
@@ -237,7 +275,7 @@ public static class BackupService
             try
             {
                 string batchedScript = string.Join("; ", psCommands);
-                RunProcess("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"{batchedScript}\"");
+                processRunner.Run("powershell.exe", $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"{batchedScript}\"", 10000);
             }
             catch (Exception ex)
             {
@@ -249,12 +287,13 @@ public static class BackupService
         try
         {
             RestoreRegistryValue(
-                Registry.LocalMachine,
+                registry,
+                RegistryHive.LocalMachine,
                 @"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient",
                 "DisableSmartNameResolution",
-                snapshot.Registry.DisableSmartNameResolution);
-            logs.Add(snapshot.Registry.DisableSmartNameResolution.HasValue
-                ? $"[+] Registry DisableSmartNameResolution restored to {snapshot.Registry.DisableSmartNameResolution.Value}"
+                registryBackup.DisableSmartNameResolution);
+            logs.Add(registryBackup.DisableSmartNameResolution.HasValue
+                ? $"[+] Registry DisableSmartNameResolution restored to {registryBackup.DisableSmartNameResolution.Value}"
                 : "[+] Registry DisableSmartNameResolution removed (was not set originally)");
         }
         catch (Exception ex)
@@ -265,12 +304,13 @@ public static class BackupService
         try
         {
             RestoreRegistryValue(
-                Registry.CurrentUser,
+                registry,
+                RegistryHive.CurrentUser,
                 @"Software\Microsoft\Windows\CurrentVersion\Internet Settings",
                 "AutoDetect",
-                snapshot.Registry.WpadAutoDetect);
-            logs.Add(snapshot.Registry.WpadAutoDetect.HasValue
-                ? $"[+] Registry WPAD AutoDetect restored to {snapshot.Registry.WpadAutoDetect.Value}"
+                registryBackup.WpadAutoDetect);
+            logs.Add(registryBackup.WpadAutoDetect.HasValue
+                ? $"[+] Registry WPAD AutoDetect restored to {registryBackup.WpadAutoDetect.Value}"
                 : "[+] Registry WPAD AutoDetect removed (was not set originally)");
         }
         catch (Exception ex)
@@ -319,8 +359,11 @@ public static class BackupService
     /// <summary>
     /// Performs a full reset of the Windows network stack (Winsock, TCP/IP, AutomaticMetric, IPv6, DNS cache).
     /// </summary>
-    public static List<string> ResetWindowsNetworkStack()
+    public static List<string> ResetWindowsNetworkStack(IProcessRunner? processRunner = null, IRegistryAccessor? registry = null)
     {
+        processRunner ??= ProcessRunner.Default;
+        registry ??= RegistryAccessor.Default;
+
         var logs = new List<string>
         {
             "[*] Executing Windows network stack reset (Factory Defaults)..."
@@ -328,7 +371,7 @@ public static class BackupService
 
         try
         {
-            RunProcess("netsh.exe", "winsock reset");
+            processRunner.Run("netsh.exe", "winsock reset", 15000);
             logs.Add("[+] Winsock catalog reset completed (netsh winsock reset)");
         }
         catch (Exception ex)
@@ -338,7 +381,7 @@ public static class BackupService
 
         try
         {
-            RunProcess("netsh.exe", "int ip reset");
+            processRunner.Run("netsh.exe", "int ip reset", 15000);
             logs.Add("[+] TCP/IP stack reset completed (netsh int ip reset)");
         }
         catch (Exception ex)
@@ -349,7 +392,7 @@ public static class BackupService
         try
         {
             // Restore AutomaticMetric on all interfaces
-            RunProcess("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -Command \"Get-NetIPInterface | Set-NetIPInterface -AutomaticMetric Enabled -ErrorAction SilentlyContinue\"");
+            processRunner.Run("powershell.exe", "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Get-NetIPInterface | Set-NetIPInterface -AutomaticMetric Enabled -ErrorAction SilentlyContinue\"", 15000);
             logs.Add("[+] AutomaticMetric restored to Enabled on all network interfaces");
         }
         catch (Exception ex)
@@ -360,7 +403,7 @@ public static class BackupService
         try
         {
             // Re-enable IPv6 on all network adapters
-            RunProcess("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -Command \"Enable-NetAdapterBinding -Name * -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue\"");
+            processRunner.Run("powershell.exe", "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Enable-NetAdapterBinding -Name * -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue\"", 15000);
             logs.Add("[+] IPv6 re-enabled on all network adapters");
         }
         catch (Exception ex)
@@ -371,11 +414,8 @@ public static class BackupService
         try
         {
             // Restore DNS registry policies to Windows default
-            using var dnsKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient", true);
-            dnsKey?.DeleteValue("DisableSmartNameResolution", throwOnMissingValue: false);
-
-            using var wpadKey = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings", true);
-            wpadKey?.SetValue("AutoDetect", 1, RegistryValueKind.DWord);
+            registry.DeleteValue(RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient", "DisableSmartNameResolution");
+            registry.WriteDword(RegistryHive.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Internet Settings", "AutoDetect", 1);
 
             logs.Add("[+] Registry DNS/WPAD policies reset to system defaults");
         }
@@ -428,7 +468,7 @@ public static class BackupService
 
     // ---- Internal capture methods ----
 
-    public static NetworkBackupSnapshot CaptureCurrentState()
+    public static NetworkBackupSnapshot CaptureCurrentState(IRegistryAccessor? registry = null)
     {
         var snapshot = new NetworkBackupSnapshot
         {
@@ -436,20 +476,21 @@ public static class BackupService
             MachineName = Environment.MachineName
         };
 
-        // 1. Capture adapter metrics via netsh
+        // 1. Capture adapter metrics via WMI/netsh
         snapshot.Adapters = CaptureAdapterMetrics();
 
         // 2. Capture IPv6 binding state on Wi-Fi adapters
         snapshot.Ipv6Bindings = CaptureIpv6Bindings();
 
         // 3. Capture registry keys
-        snapshot.Registry = CaptureRegistryState();
+        snapshot.Registry = CaptureRegistryState(registry);
 
         return snapshot;
     }
 
-    internal static List<AdapterBackup> CaptureAdapterMetrics()
+    internal static List<AdapterBackup> CaptureAdapterMetrics(IProcessRunner? processRunner = null)
     {
+        processRunner ??= ProcessRunner.Default;
         var result = new List<AdapterBackup>();
 
         // 1. Fast in-process WMI query
@@ -508,22 +549,14 @@ public static class BackupService
         try
         {
             // Use PowerShell to get metrics and AutomaticMetric flag reliably
-            var psi = new ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = "-NoProfile -ExecutionPolicy Bypass -Command \"Get-NetIPInterface -AddressFamily IPv4 | Select-Object -Property InterfaceIndex, InterfaceAlias, InterfaceMetric, AutomaticMetric | ForEach-Object { \\\"$($_.InterfaceIndex)|$($_.InterfaceAlias)|$($_.InterfaceMetric)|$($_.AutomaticMetric)\\\" }\"",
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            var run = processRunner.Run(
+                "powershell.exe",
+                "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Get-NetIPInterface -AddressFamily IPv4 | Select-Object -Property InterfaceIndex, InterfaceAlias, InterfaceMetric, AutomaticMetric | ForEach-Object { \\\"$($_.InterfaceIndex)|$($_.InterfaceAlias)|$($_.InterfaceMetric)|$($_.AutomaticMetric)\\\" }\"",
+                5000);
 
-            using var process = Process.Start(psi);
-            if (process == null) return result;
+            if (run.TimedOut || string.IsNullOrEmpty(run.StandardOutput)) return result;
 
-            string output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit(5000);
-
-            var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var lines = run.StandardOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var line in lines)
             {
                 var parts = line.Trim().Split('|');
@@ -643,22 +676,18 @@ public static class BackupService
         return result;
     }
 
-    internal static RegistryBackup CaptureRegistryState()
+    internal static RegistryBackup CaptureRegistryState(IRegistryAccessor? registry = null)
     {
+        registry ??= RegistryAccessor.Default;
         var backup = new RegistryBackup();
 
         // DisableSmartNameResolution
         try
         {
-            using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient");
-            if (key != null)
-            {
-                var value = key.GetValue("DisableSmartNameResolution");
-                if (value is int intVal)
-                {
-                    backup.DisableSmartNameResolution = intVal;
-                }
-            }
+            backup.DisableSmartNameResolution = registry.ReadDword(
+                RegistryHive.LocalMachine,
+                @"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient",
+                "DisableSmartNameResolution");
             // If key/value doesn't exist, null indicates "was not set"
         }
         catch { }
@@ -666,15 +695,10 @@ public static class BackupService
         // WPAD AutoDetect
         try
         {
-            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings");
-            if (key != null)
-            {
-                var value = key.GetValue("AutoDetect");
-                if (value is int intVal)
-                {
-                    backup.WpadAutoDetect = intVal;
-                }
-            }
+            backup.WpadAutoDetect = registry.ReadDword(
+                RegistryHive.CurrentUser,
+                @"Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+                "AutoDetect");
         }
         catch { }
 
@@ -694,41 +718,20 @@ public static class BackupService
         File.WriteAllText(path, json);
     }
 
-    private static void RestoreRegistryValue(RegistryKey rootKey, string subKeyPath, string valueName, int? originalValue)
+    private static void RestoreRegistryValue(IRegistryAccessor registry, RegistryHive hive, string subKeyPath, string valueName, int? originalValue)
     {
         if (originalValue.HasValue)
         {
-            using var key = rootKey.CreateSubKey(subKeyPath, true);
-            key?.SetValue(valueName, originalValue.Value, RegistryValueKind.DWord);
+            registry.WriteDword(hive, subKeyPath, valueName, originalValue.Value);
         }
         else
         {
             // Value did not exist originally — remove it
             try
             {
-                using var key = rootKey.OpenSubKey(subKeyPath, true);
-                key?.DeleteValue(valueName, throwOnMissingValue: false);
+                registry.DeleteValue(hive, subKeyPath, valueName);
             }
             catch { }
         }
-    }
-
-    private static void RunProcess(string fileName, string args)
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = args,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            };
-            using var p = Process.Start(psi);
-            p?.WaitForExit(5000);
-        }
-        catch { }
     }
 }

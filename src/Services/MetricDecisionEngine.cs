@@ -39,7 +39,7 @@ public class MetricDecisionEngine
             ? config.PrimaryEthernetMetric
             : config.PrimaryWifiMetric;
 
-        var excludedNames = new HashSet<string>(config.ExcludeAdapters ?? new List<string>(), StringComparer.OrdinalIgnoreCase);
+        var excludedNames = new HashSet<string>(config.GetExcludeSnapshot(), StringComparer.OrdinalIgnoreCase);
 
         foreach (var adapter in adapterList)
         {
@@ -49,13 +49,16 @@ public class MetricDecisionEngine
                 continue;
             }
 
-            if (adapter.CurrentIPv4Metric <= 0 && adapter.CurrentIPv6Metric <= 0)
+            if (excludedNames.Contains(adapter.Name) || excludedNames.Contains(adapter.Description))
             {
                 continue;
             }
 
-            if (excludedNames.Contains(adapter.Name) || excludedNames.Contains(adapter.Description))
+            // The metric could not be read (WMI and netsh both failed). Do not pretend
+            // it is optimal — surface it as a warning instead.
+            if (!adapter.HasMetricData)
             {
+                plan.Warnings.Add($"Adapter '{adapter.Name}' (id: {adapter.InterfaceIndex}): IPv4 metric could not be read; skipped.");
                 continue;
             }
 
@@ -134,7 +137,9 @@ public class MetricDecisionEngine
         plan.NeedsOptimization = plan.Actions.Count > 0;
         plan.Summary = plan.NeedsOptimization
             ? $"Optimization required for {plan.Actions.Count} adapter(s) (Primary: '{primaryAdapter.Name}', metric {primaryTargetMetric})"
-            : $"Metrics are optimal. Primary: '{primaryAdapter.Name}' (metric {primaryTargetMetric})";
+            : plan.Warnings.Count > 0
+                ? $"Metrics look optimal for evaluable adapters, but {plan.Warnings.Count} adapter(s) could not be read. Primary: '{primaryAdapter.Name}'"
+                : $"Metrics are optimal. Primary: '{primaryAdapter.Name}' (metric {primaryTargetMetric})";
 
         return plan;
     }

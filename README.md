@@ -130,29 +130,35 @@ On startup, configuration is automatically loaded or created at `configs/config.
 
 ```json
 {
-  "CheckIntervalSeconds": 10,
+  "CheckIntervalSeconds": 30,
+  "EnableMetricOptimization": true,
   "PrimaryEthernetMetric": 5,
   "PrimaryWifiMetric": 10,
   "VirtualAdapterMetric": 500,
   "DisconnectedAdapterMetric": 100,
+  "SecondaryPhysicalMetric": 50,
   "DisableSmartNameResolution": true,
   "DisableWpad": true,
   "FlushDnsOnChange": true,
   "ShowNotifications": true,
   "DisableIPv6OnWifi": true,
   "EnableWlanOptimizer": true,
-  "Language": "en",
+  "RestoreOnExit": true,
+  "Language": "ru",
   "ExcludeAdapters": []
 }
 ```
 
 ### Options Overview:
-- `CheckIntervalSeconds`: Watchdog heartbeat timer interval (seconds) for quiet external changes.
+- `CheckIntervalSeconds`: Watchdog heartbeat timer interval (seconds) for quiet external changes (default: `30`).
+- `EnableMetricOptimization`: Master switch for automatic interface priority routing (default: `true`).
 - `PrimaryEthernetMetric`: Metric applied to primary active Ethernet (default: `5`).
 - `PrimaryWifiMetric`: Metric applied to primary active Wi-Fi (default: `10`).
 - `VirtualAdapterMetric`: Metric applied to VPN / TAP / virtual adapters (default: `500`).
 - `DisconnectedAdapterMetric`: Metric applied to unplugged physical adapters (default: `100`).
+- `SecondaryPhysicalMetric`: Metric applied to connected non-primary physical adapters to avoid routing conflicts (default: `50`).
 - `EnableWlanOptimizer`: Toggles native Wi-Fi background scan suppression (default: `true`).
+- `RestoreOnExit`: Reverts metrics, DNS policies and IPv6 bindings to the captured snapshot when PingArmor exits (default: `true`).
 - `ExcludeAdapters`: List of adapter names or descriptions to ignore during optimization.
 
 ---

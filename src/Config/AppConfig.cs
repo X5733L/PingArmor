@@ -33,6 +33,9 @@ public class AppConfig
     public string Language { get; set; } = "ru";
     public List<string> ExcludeAdapters { get; set; } = new();
 
+    [JsonIgnore]
+    private readonly object _excludeLock = new();
+
     public static string GetDefaultConfigDirectory()
     {
         string baseDir = AppContext.BaseDirectory;
@@ -44,31 +47,61 @@ public class AppConfig
         return Path.Combine(GetDefaultConfigDirectory(), "config.json");
     }
 
+    /// <summary>
+    /// Per-user fallback location used when the application directory is read-only
+    /// (e.g. installed under Program Files). Written and read back consistently.
+    /// </summary>
+    public static string GetFallbackConfigPath()
+    {
+        string localDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "PingArmor",
+            "configs");
+        return Path.Combine(localDir, "config.json");
+    }
+
+    /// <summary>
+    /// Returns a thread-safe copy of the adapter exclusion list.
+    /// The monitor thread enumerates this while the UI thread may mutate it.
+    /// </summary>
+    public List<string> GetExcludeSnapshot()
+    {
+        lock (_excludeLock)
+        {
+            return new List<string>(ExcludeAdapters ?? new List<string>());
+        }
+    }
+
+    /// <summary>Adds an adapter to the exclusion list in a thread-safe way.</summary>
+    /// <returns>True if the entry was newly added.</returns>
+    public bool AddExclusion(string adapter)
+    {
+        if (string.IsNullOrWhiteSpace(adapter)) return false;
+        lock (_excludeLock)
+        {
+            ExcludeAdapters ??= new List<string>();
+            if (ExcludeAdapters.Contains(adapter, StringComparer.OrdinalIgnoreCase)) return false;
+            ExcludeAdapters.Add(adapter);
+            return true;
+        }
+    }
+
+    /// <summary>Removes an adapter from the exclusion list in a thread-safe way.</summary>
+    /// <returns>True if an entry was removed.</returns>
+    public bool RemoveExclusion(string adapter)
+    {
+        if (string.IsNullOrWhiteSpace(adapter)) return false;
+        lock (_excludeLock)
+        {
+            return ExcludeAdapters?.RemoveAll(x => x.Equals(adapter, StringComparison.OrdinalIgnoreCase)) > 0;
+        }
+    }
+
     public static AppConfig Load(string? path = null)
     {
         if (path == null)
         {
-            path = GetDefaultConfigPath();
-            if (!File.Exists(path))
-            {
-                string legacyPath = Path.Combine(AppContext.BaseDirectory, "config.json");
-                if (File.Exists(legacyPath))
-                {
-                    try
-                    {
-                        string dir = Path.GetDirectoryName(path)!;
-                        if (!Directory.Exists(dir))
-                        {
-                            Directory.CreateDirectory(dir);
-                        }
-                        File.Move(legacyPath, path, overwrite: true);
-                    }
-                    catch
-                    {
-                        path = legacyPath;
-                    }
-                }
-            }
+            path = ResolveConfigPath();
         }
 
         AppConfig config;
@@ -98,6 +131,8 @@ public class AppConfig
             }
             catch
             {
+                // Corrupt config: rename it aside so it is not silently lost, then use defaults.
+                TryQuarantineCorruptConfig(path);
                 config = new AppConfig();
             }
         }
@@ -105,9 +140,59 @@ public class AppConfig
         return config;
     }
 
+    /// <summary>
+    /// Resolves the configuration path, migrating a legacy root-level config.json when present
+    /// and falling back to the per-user location for read-only installs.
+    /// </summary>
+    private static string ResolveConfigPath()
+    {
+        string defaultPath = GetDefaultConfigPath();
+        if (File.Exists(defaultPath)) return defaultPath;
+
+        // Legacy layout: config.json next to the executable.
+        string legacyPath = Path.Combine(AppContext.BaseDirectory, "config.json");
+        if (File.Exists(legacyPath))
+        {
+            try
+            {
+                string dir = Path.GetDirectoryName(defaultPath)!;
+                if (!Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+                File.Move(legacyPath, defaultPath, overwrite: true);
+                return defaultPath;
+            }
+            catch
+            {
+                return legacyPath;
+            }
+        }
+
+        // Per-user fallback written previously because the install dir was read-only.
+        string fallbackPath = GetFallbackConfigPath();
+        if (File.Exists(fallbackPath)) return fallbackPath;
+
+        return defaultPath;
+    }
+
+    private static void TryQuarantineCorruptConfig(string path)
+    {
+        try
+        {
+            if (!File.Exists(path)) return;
+            string quarantine = path + $".corrupt-{DateTime.Now:yyyyMMddHHmmss}";
+            File.Move(path, quarantine, overwrite: false);
+        }
+        catch
+        {
+            // Best effort only.
+        }
+    }
+
     public void Save(string? path = null)
     {
-        path ??= GetDefaultConfigPath();
+        path ??= ResolveConfigPath();
         string? dir = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
         {
@@ -122,14 +207,28 @@ public class AppConfig
 
         try
         {
-            File.WriteAllText(path, json);
+            AtomicWrite(path, json);
         }
-        catch (UnauthorizedAccessException)
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
         {
-            string localDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PingArmor", "configs");
-            Directory.CreateDirectory(localDir);
-            string localPath = Path.Combine(localDir, "config.json");
-            File.WriteAllText(localPath, json);
+            // Read-only install directory: fall back to the per-user location.
+            string fallbackPath = GetFallbackConfigPath();
+            string fallbackDir = Path.GetDirectoryName(fallbackPath)!;
+            Directory.CreateDirectory(fallbackDir);
+            AtomicWrite(fallbackPath, json);
         }
+    }
+
+    private static void AtomicWrite(string path, string contents)
+    {
+        string? dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        string tempPath = path + ".tmp";
+        File.WriteAllText(tempPath, contents);
+        File.Move(tempPath, path, overwrite: true);
     }
 }
