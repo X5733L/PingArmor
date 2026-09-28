@@ -1,0 +1,21 @@
+<!--
+    PingArmor design tokens (Light).
+    Semantic brushes that are not provided by WPF-UI.
+    Swapped at runtime by UI/Services/ThemeService.cs together with the WPF-UI theme.
+-->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Status palette -->
+    <SolidColorBrush x:Key="StatusOkBrush" Color="#0F7B4F" />
+    <SolidColorBrush x:Key="StatusWarnBrush" Color="#9A6700" />
+    <SolidColorBrush x:Key="StatusErrorBrush" Color="#C42B1C" />
+    <SolidColorBrush x:Key="StatusPausedBrush" Color="#6E6E6E" />
+
+    <!-- Subtle 12% tints for pills and badges -->
+    <SolidColorBrush x:Key="StatusOkSubtleBrush" Color="#140F7B4F" />
+    <SolidColorBrush x:Key="StatusWarnSubtleBrush" Color="#149A6700" />
+    <SolidColorBrush x:Key="StatusErrorSubtleBrush" Color="#14C42B1C" />
+    <SolidColorBrush x:Key="StatusPausedSubtleBrush" Color="#146E6E6E" />
+</ResourceDictionary>

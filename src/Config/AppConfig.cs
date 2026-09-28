@@ -31,6 +31,12 @@ public class AppConfig
     /// </summary>
     public bool RestoreOnExit { get; set; } = true;
     public string Language { get; set; } = "ru";
+
+    /// <summary>
+    /// Interface theme: System | Light | Dark. Applied through UI/Services/ThemeService.cs.
+    /// </summary>
+    public string Theme { get; set; } = "System";
+
     public List<string> ExcludeAdapters { get; set; } = new();
 
     /// <summary>

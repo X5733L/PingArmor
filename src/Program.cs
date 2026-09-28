@@ -8,6 +8,7 @@ using PingArmor.Config;
 using PingArmor.Localization;
 using PingArmor.Services;
 using PingArmor.UI;
+using PingArmor.UI.Services;
 
 namespace PingArmor;
 
@@ -334,6 +335,9 @@ public static class Program
             };
             wpfApp.InitializeComponent();
         }
+
+        // Apply the configured theme before any window is created.
+        ThemeService.Initialize(config.Theme);
 
         using var monitor = new NetworkMonitor(engine, config);
         using var trayContext = new TrayApplicationContext(config, engine, monitor);

@@ -5,7 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-    Title="PingArmor - Панель управления"
+    Title="{Binding Texts.DashboardTitle}"
     Icon="pack://application:,,,/app.ico"
     Width="980"
     Height="650"
@@ -14,10 +14,9 @@
     WindowStartupLocation="CenterScreen"
     WindowBackdropType="Mica"
     ExtendsContentIntoTitleBar="True"
-    Background="#1E1E22"
     mc:Ignorable="d">
 
-    <Grid Background="#1E1E22">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -27,7 +26,7 @@
         <ui:TitleBar
             x:Name="AppTitleBar"
             Grid.Row="0"
-            Title="PingArmor - Панель управления">
+            Title="{Binding Texts.DashboardTitle}">
             <ui:TitleBar.Icon>
                 <ui:SymbolIcon Symbol="Shield24" />
             </ui:TitleBar.Icon>
@@ -52,17 +51,17 @@
                 SelectionChanged="RootNavigation_SelectionChanged">
 
                 <ui:NavigationView.MenuItems>
-                    <ui:NavigationViewItem x:Name="NavItemOverview" Content="Главная" Tag="Overview" Click="NavItem_Click">
+                    <ui:NavigationViewItem x:Name="NavItemOverview" Content="{Binding Texts.NavOverview}" Tag="Overview" Click="NavItem_Click">
                         <ui:NavigationViewItem.Icon>
                             <ui:SymbolIcon Symbol="Home24" />
                         </ui:NavigationViewItem.Icon>
                     </ui:NavigationViewItem>
-                    <ui:NavigationViewItem x:Name="NavItemAdapters" Content="Сетевые адаптеры" Tag="Adapters" Click="NavItem_Click">
+                    <ui:NavigationViewItem x:Name="NavItemAdapters" Content="{Binding Texts.NavAdapters}" Tag="Adapters" Click="NavItem_Click">
                         <ui:NavigationViewItem.Icon>
                             <ui:SymbolIcon Symbol="Router24" />
                         </ui:NavigationViewItem.Icon>
                     </ui:NavigationViewItem>
-                    <ui:NavigationViewItem x:Name="NavItemLog" Content="Журнал событий" Tag="Log" Click="NavItem_Click">
+                    <ui:NavigationViewItem x:Name="NavItemLog" Content="{Binding Texts.NavLog}" Tag="Log" Click="NavItem_Click">
                         <ui:NavigationViewItem.Icon>
                             <ui:SymbolIcon Symbol="DocumentText24" />
                         </ui:NavigationViewItem.Icon>
@@ -70,12 +69,12 @@
                 </ui:NavigationView.MenuItems>
 
                 <ui:NavigationView.FooterMenuItems>
-                    <ui:NavigationViewItem x:Name="NavItemRollback" Content="Откат и сброс" Tag="Rollback" Click="NavItem_Click">
+                    <ui:NavigationViewItem x:Name="NavItemRollback" Content="{Binding Texts.NavRollback}" Tag="Rollback" Click="NavItem_Click">
                         <ui:NavigationViewItem.Icon>
                             <ui:SymbolIcon Symbol="History24" />
                         </ui:NavigationViewItem.Icon>
                     </ui:NavigationViewItem>
-                    <ui:NavigationViewItem x:Name="NavItemSettings" Content="Параметры" Tag="Settings" Click="NavItem_Click">
+                    <ui:NavigationViewItem x:Name="NavItemSettings" Content="{Binding Texts.NavTuning}" Tag="Settings" Click="NavItem_Click">
                         <ui:NavigationViewItem.Icon>
                             <ui:SymbolIcon Symbol="Settings24" />
                         </ui:NavigationViewItem.Icon>
@@ -94,9 +93,9 @@
 
                     <!-- Header & Command Bar -->
                     <Grid Grid.Row="0" Margin="0,0,0,16">
-                        <TextBlock x:Name="TxtOverviewTitle" Text="Главная" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock x:Name="TxtOverviewTitle" Text="{Binding Texts.NavOverview}" Style="{StaticResource PageTitleTextStyle}" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <ui:Button x:Name="BtnOverviewOptimize" Content="Оптимизировать сейчас" Appearance="Primary" Margin="0,0,8,0" Click="BtnOptimizeNow_Click">
+                            <ui:Button x:Name="BtnOverviewOptimize" Content="{Binding Texts.OptimizeNowShort}" Appearance="Primary" Margin="0,0,8,0" Click="BtnOptimizeNow_Click">
                                 <ui:Button.Icon>
                                     <ui:SymbolIcon Symbol="Flash24" />
                                 </ui:Button.Icon>
@@ -115,18 +114,18 @@
                             <!-- Hero Status Card -->
                             <ui:Card Margin="0,0,0,14" Padding="20">
                                 <StackPanel>
-                                    <TextBlock x:Name="TxtHeroStatus" Text="Защищено (Приоритет в норме)" FontSize="16" FontWeight="SemiBold" Foreground="#10B981" Margin="0,0,0,6" />
-                                    <TextBlock x:Name="TxtHeroDesc" Text="PingArmor автоматически отслеживает приоритеты сетевых интерфейсов." FontSize="13" Foreground="#A1A1AA" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="TxtHeroStatus" Text="Защищено (Приоритет в норме)" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource StatusOkBrush}" Margin="0,0,0,6" />
+                                    <TextBlock x:Name="TxtHeroDesc" Text="PingArmor автоматически отслеживает приоритеты сетевых интерфейсов." FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                                 </StackPanel>
                             </ui:Card>
 
                             <!-- Active Channel Card -->
                             <ui:Card Margin="0,0,0,14" Padding="20">
                                 <StackPanel>
-                                    <TextBlock x:Name="TxtActiveChannelHeader" Text="Основной интернет-канал" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8" />
-                                    <TextBlock x:Name="TxtPrimaryAdapterName" Text="Определение..." FontSize="14" FontWeight="Bold" Foreground="#60CDFF" Margin="0,0,0,4" />
-                                    <TextBlock x:Name="TxtPrimaryAdapterDetails" Text="Тип: Ethernet • Метрика: 5 • Интернет: Активен" FontSize="13" Foreground="#A1A1AA" Margin="0,0,0,8" />
-                                    <TextBlock x:Name="TxtWlanGamingStatus" Text="📶 Фоновый поиск сетей Wi-Fi: Отключен (Игровой режим активен)" FontSize="13" Foreground="#10B981" />
+                                    <TextBlock x:Name="TxtActiveChannelHeader" Text="{Binding Texts.ActiveChannelTitle}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                    <TextBlock x:Name="TxtPrimaryAdapterName" Text="Определение..." FontSize="14" FontWeight="Bold" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,0,4" />
+                                    <TextBlock x:Name="TxtPrimaryAdapterDetails" Text="Тип: Ethernet • Метрика: 5 • Интернет: Активен" FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8" />
+                                    <TextBlock x:Name="TxtWlanGamingStatus" Text="Фоновый поиск сетей Wi-Fi: Отключен (Игровой режим активен)" FontSize="13" Foreground="{DynamicResource StatusOkBrush}" />
                                 </StackPanel>
                             </ui:Card>
                         </StackPanel>
@@ -142,14 +141,14 @@
 
                     <!-- Header & Command Bar -->
                     <Grid Grid.Row="0" Margin="0,0,0,16">
-                        <TextBlock x:Name="TxtAdaptersTitle" Text="Сетевые адаптеры" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock x:Name="TxtAdaptersTitle" Text="{Binding Texts.NavAdapters}" Style="{StaticResource PageTitleTextStyle}" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <ui:Button x:Name="BtnAdaptersRefresh" Content="Обновить" Margin="0,0,8,0" Click="BtnRefreshAdapters_Click">
+                            <ui:Button x:Name="BtnAdaptersRefresh" Content="{Binding Texts.AdaptersRefresh}" Margin="0,0,8,0" Click="BtnRefreshAdapters_Click">
                                 <ui:Button.Icon>
                                     <ui:SymbolIcon Symbol="ArrowClockwise24" />
                                 </ui:Button.Icon>
                             </ui:Button>
-                            <ui:Button x:Name="BtnAdaptersOptimize" Content="Оптимизировать" Appearance="Primary" Click="BtnOptimizeNow_Click">
+                            <ui:Button x:Name="BtnAdaptersOptimize" Content="{Binding Texts.OptimizeNowShort}" Appearance="Primary" Click="BtnOptimizeNow_Click">
                                 <ui:Button.Icon>
                                     <ui:SymbolIcon Symbol="Flash24" />
                                 </ui:Button.Icon>
@@ -216,12 +215,12 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock x:Name="TxtSettingsTitle" Grid.Row="0" Text="Параметры" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16" />
+                    <TextBlock x:Name="TxtSettingsTitle" Grid.Row="0" Text="{Binding Texts.NavTuning}" Style="{StaticResource PageTitleTextStyle}" Margin="0,0,0,16" />
 
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="0,0,8,0">
                             <!-- Group 1: Сетевые настройки и оптимизация Windows -->
-                            <TextBlock x:Name="TxtSettingsGroupNetwork" Text="Сетевые настройки и оптимизация Windows" FontSize="14" FontWeight="SemiBold" Foreground="#A1A1AA" Margin="0,4,0,12" />
+                            <TextBlock x:Name="TxtSettingsGroupNetwork" Text="{Binding Texts.SettingsGroupNetwork}" Style="{StaticResource SectionHeaderTextStyle}" Margin="0,4,0,12" />
 
                             <ui:CardControl x:Name="CardMetricOpt" Header="Оптимизировать приоритеты сети" Margin="0,0,0,10">
                                 <ui:CardControl.Icon>
@@ -266,7 +265,7 @@
                             </ui:CardControl>
 
                             <!-- Group 2: Настройки программы PingArmor -->
-                            <TextBlock x:Name="TxtSettingsGroupApp" Text="Настройки программы PingArmor" FontSize="14" FontWeight="SemiBold" Foreground="#A1A1AA" Margin="0,16,0,12" />
+                            <TextBlock x:Name="TxtSettingsGroupApp" Text="{Binding Texts.SettingsGroupApp}" Style="{StaticResource SectionHeaderTextStyle}" Margin="0,16,0,12" />
 
                             <ui:CardControl x:Name="CardStartup" Header="Автозапуск при входе в Windows" Margin="0,0,0,10">
                                 <ui:CardControl.Icon>
@@ -301,6 +300,18 @@
                                 </StackPanel>
                             </ui:CardControl>
 
+                            <!-- Theme Switcher Card -->
+                            <ui:CardControl x:Name="CardTheme" Header="Оформление" Margin="0,0,0,10">
+                                <ui:CardControl.Icon>
+                                    <ui:SymbolIcon Symbol="DarkTheme24" />
+                                </ui:CardControl.Icon>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:Button x:Name="BtnThemeSystem" Content="{Binding Texts.ThemeSystem}" Margin="0,0,4,0" Click="BtnTheme_Click" Tag="System" />
+                                    <ui:Button x:Name="BtnThemeLight" Content="{Binding Texts.ThemeLight}" Margin="0,0,4,0" Click="BtnTheme_Click" Tag="Light" />
+                                    <ui:Button x:Name="BtnThemeDark" Content="{Binding Texts.ThemeDark}" Click="BtnTheme_Click" Tag="Dark" />
+                                </StackPanel>
+                            </ui:CardControl>
+
                             <!-- About / Credits Card -->
                             <ui:Card Margin="0,0,0,10" Padding="14">
                                 <Grid>
@@ -308,10 +319,10 @@
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <ui:SymbolIcon Symbol="Info24" FontSize="20" Margin="0,0,14,0" VerticalAlignment="Center" Foreground="#A1A1AA" />
+                                    <ui:SymbolIcon Symbol="Info24" FontSize="20" Margin="0,0,14,0" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock x:Name="TxtAboutApp" Text="PingArmor" FontWeight="SemiBold" FontSize="13" Foreground="#E4E4E7" />
-                                        <TextBlock x:Name="TxtAboutIconCredit" Text="Иконка приложения: Magnific (Flaticon)" FontSize="11" Foreground="#71717A" Margin="0,2,0,0" />
+                                        <TextBlock x:Name="TxtAboutApp" Text="PingArmor" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                        <TextBlock x:Name="TxtAboutIconCredit" Text="{Binding Texts.AboutIconCredit}" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,2,0,0" />
                                     </StackPanel>
                                 </Grid>
                             </ui:Card>
@@ -327,8 +338,8 @@
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0" Margin="0,0,0,16">
-                        <TextBlock x:Name="TxtRollbackTitle" Text="Откат и сброс" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <ui:Button x:Name="BtnRollbackTopRestore" Content="Восстановить настройки" Appearance="Primary" HorizontalAlignment="Right" Click="BtnRestoreSettings_Click">
+                        <TextBlock x:Name="TxtRollbackTitle" Text="{Binding Texts.NavRollback}" Style="{StaticResource PageTitleTextStyle}" />
+                        <ui:Button x:Name="BtnRollbackTopRestore" Content="{Binding Texts.RestoreSettings}" Appearance="Primary" HorizontalAlignment="Right" Click="BtnRestoreSettings_Click">
                             <ui:Button.Icon>
                                 <ui:SymbolIcon Symbol="ArrowReset24" />
                             </ui:Button.Icon>
@@ -340,10 +351,10 @@
                             <!-- Card 1: PingArmor Backup -->
                             <ui:Card Margin="0,0,0,14" Padding="20">
                                 <StackPanel>
-                                    <TextBlock x:Name="TxtBackupCardTitle" Text="Резервная копия настроек PingArmor" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" />
-                                    <TextBlock x:Name="TxtBackupStatus" Text="Снимок создан: ..." FontSize="14" FontWeight="Bold" Foreground="#10B981" Margin="0,0,0,4" />
-                                    <TextBlock x:Name="TxtBackupDesc" Text="Мгновенный откат всех параметров, измененных PingArmor, в исходное состояние без перезагрузки." FontSize="13" Foreground="#A1A1AA" TextWrapping="Wrap" Margin="0,0,0,12" />
-                                    <ui:Button x:Name="BtnRestoreSettingsCard" Content="Восстановить исходные настройки" Appearance="Primary" HorizontalAlignment="Left" Click="BtnRestoreSettings_Click">
+                                    <TextBlock x:Name="TxtBackupCardTitle" Text="{Binding Texts.RollbackBackupCardTitle}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                    <TextBlock x:Name="TxtBackupStatus" Text="Снимок создан: ..." FontSize="14" FontWeight="Bold" Foreground="{DynamicResource StatusOkBrush}" Margin="0,0,0,4" />
+                                    <TextBlock x:Name="TxtBackupDesc" Text="{Binding Texts.RollbackBackupDesc}" FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                    <ui:Button x:Name="BtnRestoreSettingsCard" Content="{Binding Texts.RestoreSettings}" Appearance="Primary" HorizontalAlignment="Left" Click="BtnRestoreSettings_Click">
                                         <ui:Button.Icon>
                                             <ui:SymbolIcon Symbol="ArrowReset24" />
                                         </ui:Button.Icon>
@@ -354,9 +365,9 @@
                             <!-- Card 2: Windows Network Stack Reset -->
                             <ui:Card Margin="0,0,0,14" Padding="20">
                                 <StackPanel>
-                                    <TextBlock x:Name="TxtWindowsResetTitle" Text="Сброс сети Windows" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" />
-                                    <TextBlock x:Name="TxtWindowsResetDesc" Text="Открывает «Дополнительные сетевые параметры». В открывшемся окне прокрутите вниз до блока «Дополнительные параметры» и выберите «Сброс сети» → «Сбросить сейчас»." FontSize="13" Foreground="#A1A1AA" TextWrapping="Wrap" Margin="0,0,0,12" />
-                                    <ui:Button x:Name="BtnOpenWindowsSettings" Content="Открыть сброс сети в Параметрах Windows" HorizontalAlignment="Left" Click="BtnOpenWindowsSettings_Click">
+                                    <TextBlock x:Name="TxtWindowsResetTitle" Text="{Binding Texts.RollbackWindowsResetTitle}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                    <TextBlock x:Name="TxtWindowsResetDesc" Text="{Binding Texts.RollbackWindowsResetDesc}" FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                    <ui:Button x:Name="BtnOpenWindowsSettings" Content="{Binding Texts.BtnOpenWindowsSettings}" HorizontalAlignment="Left" Click="BtnOpenWindowsSettings_Click">
                                         <ui:Button.Icon>
                                             <ui:SymbolIcon Symbol="Open24" />
                                         </ui:Button.Icon>
@@ -375,24 +386,24 @@
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0" Margin="0,0,0,16">
-                        <TextBlock x:Name="TxtLogTitle" Text="Журнал событий" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock x:Name="TxtLogTitle" Text="{Binding Texts.NavLog}" Style="{StaticResource PageTitleTextStyle}" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <ui:Button x:Name="BtnLogOptimize" Content="Оптимизировать" Appearance="Primary" Margin="0,0,8,0" Click="BtnOptimizeNow_Click">
+                            <ui:Button x:Name="BtnLogOptimize" Content="{Binding Texts.OptimizeNowShort}" Appearance="Primary" Margin="0,0,8,0" Click="BtnOptimizeNow_Click">
                                 <ui:Button.Icon>
                                     <ui:SymbolIcon Symbol="Flash24" />
                                 </ui:Button.Icon>
                             </ui:Button>
-                            <ui:Button x:Name="BtnLogClear" Content="Очистить" Margin="0,0,8,0" Click="BtnLogClear_Click">
+                            <ui:Button x:Name="BtnLogClear" Content="{Binding Texts.Clear}" Margin="0,0,8,0" Click="BtnLogClear_Click">
                                 <ui:Button.Icon>
                                     <ui:SymbolIcon Symbol="Broom24" />
                                 </ui:Button.Icon>
                             </ui:Button>
-                            <ui:Button x:Name="BtnLogOpenFile" Content="Файл лога" Margin="0,0,8,0" Click="BtnLogOpenFile_Click">
+                            <ui:Button x:Name="BtnLogOpenFile" Content="{Binding Texts.LogOpenFile}" Margin="0,0,8,0" Click="BtnLogOpenFile_Click">
                                 <ui:Button.Icon>
                                     <ui:SymbolIcon Symbol="Document24" />
                                 </ui:Button.Icon>
                             </ui:Button>
-                            <ui:Button x:Name="BtnLogCopy" Content="Копировать" Click="BtnLogCopy_Click">
+                            <ui:Button x:Name="BtnLogCopy" Content="{Binding Texts.CopyLog}" Click="BtnLogCopy_Click">
                                 <ui:Button.Icon>
                                     <ui:SymbolIcon Symbol="Copy24" />
                                 </ui:Button.Icon>
@@ -408,10 +419,10 @@
                         TextWrapping="Wrap"
                         FontFamily="Consolas"
                         FontSize="13"
-                        Background="#141416"
-                        Foreground="#E4E4E7"
+                        Background="{DynamicResource ControlFillColorDefaultBrush}"
+                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                         BorderThickness="1"
-                        BorderBrush="#2E2E36"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                         Padding="10" />
                 </Grid>
             </Grid>

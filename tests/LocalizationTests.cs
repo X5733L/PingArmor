@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.IO;
 using System.Reflection;
 using PingArmor.Config;
@@ -101,6 +102,38 @@ public class LocalizationTests : IDisposable
             finally
             {
                 LocalizationService.LanguageChanged -= handler;
+                LocalizationService.SetLanguage(AppLanguage.Ru);
+            }
+        }
+    }
+
+    [Fact]
+    public void LocalizationService_Current_RaisesPropertyChangedForBindings()
+    {
+        lock (TestLock)
+        {
+            LocalizationService.SetLanguage(AppLanguage.Ru);
+            var service = LocalizationService.Current;
+
+            bool notified = false;
+            PropertyChangedEventHandler handler = (_, e) =>
+            {
+                if (string.IsNullOrEmpty(e.PropertyName)) notified = true;
+            };
+
+            service.PropertyChanged += handler;
+            try
+            {
+                LocalizationService.SetLanguage(AppLanguage.En);
+
+                Assert.True(notified, "Changing language must invalidate the bindable Texts property.");
+                Assert.Same(LocalizedStrings.En, service.Texts);
+                Assert.Equal(LocalizedStrings.En.NavOverview, service.Texts.NavOverview);
+                Assert.Equal(AppLanguage.En, service.Language);
+            }
+            finally
+            {
+                service.PropertyChanged -= handler;
                 LocalizationService.SetLanguage(AppLanguage.Ru);
             }
         }

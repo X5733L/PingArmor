@@ -13,6 +13,7 @@ using PingArmor.Config;
 using PingArmor.Localization;
 using PingArmor.Models;
 using PingArmor.Services;
+using PingArmor.UI.Services;
 using Wpf.Ui.Controls;
 using MessageBoxButton = System.Windows.MessageBoxButton;
 using MessageBoxResult = System.Windows.MessageBoxResult;
@@ -40,6 +41,8 @@ public partial class DashboardWindow : FluentWindow
         _logAppender = logAppender;
 
         InitializeComponent();
+        Loaded += (_, _) => ThemeService.RegisterWindow(this);
+        DataContext = LocalizationService.Current;
 
         GridAdapters.ItemsSource = _adapterRows;
         LocalizationService.LanguageChanged += OnLanguageChanged;
@@ -128,34 +131,38 @@ public partial class DashboardWindow : FluentWindow
         var s = LocalizationService.Strings;
         if (!_monitor.IsRunning)
         {
-            BtnOverviewToggle.Content = CleanEmoji(s.ResumeProtection);
+            BtnOverviewToggle.Content = s.ResumeProtection;
             IconOverviewToggle.Symbol = SymbolRegular.Play24;
             TxtHeroStatus.Text = s.StatusPaused;
-            TxtHeroStatus.Foreground = System.Windows.Media.Brushes.Gray;
-            TxtHeroDesc.Text = "Мониторинг сети приостановлен пользователем.";
+            TxtHeroStatus.Foreground = ThemeBrush("StatusPausedBrush");
+            TxtHeroDesc.Text = s.OverviewPausedDesc;
         }
         else
         {
-            BtnOverviewToggle.Content = CleanEmoji(s.PauseProtection);
+            BtnOverviewToggle.Content = s.PauseProtection;
             IconOverviewToggle.Symbol = SymbolRegular.Pause24;
             if (plan != null)
             {
                 if (plan.NeedsOptimization)
                 {
                     TxtHeroStatus.Text = s.StatusAdjusting;
-                    TxtHeroStatus.Foreground = System.Windows.Media.Brushes.Goldenrod;
+                    TxtHeroStatus.Foreground = ThemeBrush("StatusWarnBrush");
                 }
                 else
                 {
                     TxtHeroStatus.Text = s.StatusProtected;
-                    TxtHeroStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(16, 185, 129));
+                    TxtHeroStatus.Foreground = ThemeBrush("StatusOkBrush");
                 }
                 TxtHeroDesc.Text = plan.Summary;
 
                 if (plan.PrimaryAdapter != null)
                 {
                     TxtPrimaryAdapterName.Text = plan.PrimaryAdapter.Name;
-                    TxtPrimaryAdapterDetails.Text = $"Тип: {plan.PrimaryAdapter.Type} • Метрика IPv4: {plan.PrimaryAdapter.CurrentIPv4Metric} • Интернет: {(plan.PrimaryAdapter.HasInternet ? "Есть" : "Нет")}";
+                    TxtPrimaryAdapterDetails.Text = string.Format(
+                        s.PrimaryAdapterDetailsFormat,
+                        plan.PrimaryAdapter.Type,
+                        plan.PrimaryAdapter.CurrentIPv4Metric,
+                        plan.PrimaryAdapter.HasInternet ? s.InternetYes : s.InternetNo);
                 }
                 else
                 {
@@ -166,11 +173,11 @@ public partial class DashboardWindow : FluentWindow
         }
 
         TxtWlanGamingStatus.Text = _config.EnableWlanOptimizer
-            ? "📶 Фоновый поиск Wi-Fi: Отключен (Игровой режим включен, лаг-спайки устранены)"
-            : "📶 Фоновый поиск Wi-Fi: Стандартный режим Windows";
+            ? s.WlanOptimizerActive
+            : s.WlanOptimizerStandard;
         TxtWlanGamingStatus.Foreground = _config.EnableWlanOptimizer
-            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(16, 185, 129))
-            : System.Windows.Media.Brushes.Gray;
+            ? ThemeBrush("StatusOkBrush")
+            : ThemeBrush("StatusPausedBrush");
     }
 
     private void BtnOptimizeNow_Click(object sender, RoutedEventArgs e)
@@ -283,6 +290,7 @@ public partial class DashboardWindow : FluentWindow
             SwFlushDns.IsChecked = _config.FlushDnsOnChange;
 
             UpdateLanguageButtonHighlight();
+            UpdateThemeButtonHighlight();
         }
         finally
         {
@@ -431,14 +439,34 @@ public partial class DashboardWindow : FluentWindow
     private void UpdateLanguageButtonHighlight()
     {
         var cur = LocalizationService.CurrentLanguage;
-        HighlightLangButton(BtnLangRu, cur == AppLanguage.Ru);
-        HighlightLangButton(BtnLangEn, cur == AppLanguage.En);
-        HighlightLangButton(BtnLangKk, cur == AppLanguage.Kk);
+        HighlightChoiceButton(BtnLangRu, cur == AppLanguage.Ru);
+        HighlightChoiceButton(BtnLangEn, cur == AppLanguage.En);
+        HighlightChoiceButton(BtnLangKk, cur == AppLanguage.Kk);
     }
 
-    private static void HighlightLangButton(Wpf.Ui.Controls.Button btn, bool active)
+    private static void HighlightChoiceButton(Wpf.Ui.Controls.Button btn, bool active)
     {
         btn.Appearance = active ? ControlAppearance.Primary : ControlAppearance.Secondary;
+    }
+
+    private void BtnTheme_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button btn && btn.Tag is string mode)
+        {
+            _config.Theme = mode;
+            TrySaveConfig();
+            ThemeService.Apply(mode);
+            UpdateThemeButtonHighlight();
+            _logAppender($"[*] Theme changed: {mode}");
+        }
+    }
+
+    private void UpdateThemeButtonHighlight()
+    {
+        var mode = _config.Theme;
+        HighlightChoiceButton(BtnThemeSystem, string.Equals(mode, ThemeService.ModeSystem, StringComparison.OrdinalIgnoreCase));
+        HighlightChoiceButton(BtnThemeLight, string.Equals(mode, ThemeService.ModeLight, StringComparison.OrdinalIgnoreCase));
+        HighlightChoiceButton(BtnThemeDark, string.Equals(mode, ThemeService.ModeDark, StringComparison.OrdinalIgnoreCase));
     }
 
     #endregion
@@ -459,12 +487,12 @@ public partial class DashboardWindow : FluentWindow
         if (info.Exists && info.CreatedAt.HasValue)
         {
             TxtBackupStatus.Text = string.Format(s.RollbackBackupStatusFound, info.CreatedAt.Value.ToString("yyyy-MM-dd HH:mm:ss"), info.AdapterCount);
-            TxtBackupStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(16, 185, 129));
+            TxtBackupStatus.Foreground = ThemeBrush("StatusOkBrush");
         }
         else
         {
             TxtBackupStatus.Text = s.RollbackBackupStatusNotFound;
-            TxtBackupStatus.Foreground = System.Windows.Media.Brushes.Goldenrod;
+            TxtBackupStatus.Foreground = ThemeBrush("StatusWarnBrush");
         }
     }
 
@@ -537,7 +565,7 @@ public partial class DashboardWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            _logAppender($"[-] Не удалось открыть файл лога: {ex.Message}");
+            _logAppender($"[-] Failed to open log file: {ex.Message}");
         }
     }
 
@@ -567,36 +595,6 @@ public partial class DashboardWindow : FluentWindow
     {
         var s = LocalizationService.Strings;
 
-        Title = s.DashboardTitle;
-        AppTitleBar.Title = s.DashboardTitle;
-
-        NavItemOverview.Content = s.NavOverview;
-        NavItemAdapters.Content = s.NavAdapters;
-        NavItemRollback.Content = s.NavRollback;
-        NavItemLog.Content = s.NavLog;
-        NavItemSettings.Content = s.NavTuning;
-
-        TxtOverviewTitle.Text = s.NavOverview;
-        TxtAdaptersTitle.Text = s.NavAdapters;
-        TxtRollbackTitle.Text = s.NavRollback;
-        TxtLogTitle.Text = s.NavLog;
-        TxtSettingsTitle.Text = s.NavTuning;
-
-        BtnOverviewOptimize.Content = CleanEmoji(s.OptimizeNow);
-        BtnAdaptersOptimize.Content = CleanEmoji(s.OptimizeNow);
-        BtnLogOptimize.Content = CleanEmoji(s.OptimizeNow);
-
-        BtnAdaptersRefresh.Content = LocalizationService.CurrentLanguage switch
-        {
-            AppLanguage.En => "Refresh list",
-            AppLanguage.Kk => "Тізімді жаңарту",
-            _ => "Обновить список"
-        };
-        BtnLogOptimize.Content = CleanEmoji(s.OptimizeNow);
-        BtnLogClear.Content = "Очистить";
-        BtnLogOpenFile.Content = CleanEmoji(s.LogOpenFile);
-        BtnLogCopy.Content = CleanEmoji(s.CopyLog);
-
         ColExclude.Header = s.AdaptersHeaderExclude;
         ColName.Header = s.AdaptersHeaderName;
         ColType.Header = s.AdaptersHeaderType;
@@ -604,54 +602,35 @@ public partial class DashboardWindow : FluentWindow
         ColMetric.Header = s.AdaptersHeaderMetric;
         ColInternet.Header = s.AdaptersHeaderInternet;
 
-        TxtSettingsGroupNetwork.Text = s.SettingsGroupNetwork;
-        TxtSettingsGroupApp.Text = s.SettingsGroupApp;
-
-        SetCardHeader(CardGamingMode, CleanEmoji(s.GamingMode), s.WlanOptimizerDesc);
-        SetCardHeader(CardMetricOpt, CleanEmoji(s.MetricOptimizationTitle), s.MetricOptimizationDesc);
-        SetCardHeader(CardStartup, CleanEmoji(s.StartupWithWindows), s.StartupDesc);
-        SetCardHeader(CardRestoreOnExit, CleanEmoji(s.RestoreOnExit), s.RestoreOnExitDesc);
-        SetCardHeader(CardNotifications, CleanEmoji(s.Notifications), s.NotificationsDesc);
-        SetCardHeader(CardDisableIPv6, CleanEmoji(s.DisableIPv6OnWifiTitle), s.DisableIPv6OnWifiDesc);
-        SetCardHeader(CardDisableSmartDns, CleanEmoji(s.DisableSmartDnsTitle), s.DisableSmartDnsDesc);
-        SetCardHeader(CardDisableWpad, CleanEmoji(s.DisableWpadTitle), s.DisableWpadDesc);
-        SetCardHeader(CardFlushDns, CleanEmoji(s.FlushDnsTitle), s.FlushDnsDesc);
-
+        SetCardHeader(CardGamingMode, s.GamingMode, s.WlanOptimizerDesc);
+        SetCardHeader(CardMetricOpt, s.MetricOptimizationTitle, s.MetricOptimizationDesc);
+        SetCardHeader(CardStartup, s.StartupWithWindows, s.StartupDesc);
+        SetCardHeader(CardRestoreOnExit, s.RestoreOnExit, s.RestoreOnExitDesc);
+        SetCardHeader(CardNotifications, s.Notifications, s.NotificationsDesc);
+        SetCardHeader(CardDisableIPv6, s.DisableIPv6OnWifiTitle, s.DisableIPv6OnWifiDesc);
+        SetCardHeader(CardDisableSmartDns, s.DisableSmartDnsTitle, s.DisableSmartDnsDesc);
+        SetCardHeader(CardDisableWpad, s.DisableWpadTitle, s.DisableWpadDesc);
+        SetCardHeader(CardFlushDns, s.FlushDnsTitle, s.FlushDnsDesc);
         SetCardHeader(CardLang, s.LanguageInterfaceTitle, s.LanguageInterfaceDesc);
-
-        var currentLang = LocalizationService.CurrentLanguage;
-        BtnLangRu.Appearance = currentLang == AppLanguage.Ru ? ControlAppearance.Primary : ControlAppearance.Secondary;
-        BtnLangEn.Appearance = currentLang == AppLanguage.En ? ControlAppearance.Primary : ControlAppearance.Secondary;
-        BtnLangKk.Appearance = currentLang == AppLanguage.Kk ? ControlAppearance.Primary : ControlAppearance.Secondary;
-
-        BtnRestoreSettingsCard.Content = CleanEmoji(s.RestoreSettings);
-        BtnRollbackTopRestore.Content = CleanEmoji(s.RestoreSettings);
-        TxtWindowsResetTitle.Text = s.RollbackWindowsResetTitle;
-        TxtWindowsResetDesc.Text = s.RollbackWindowsResetDesc;
-        BtnOpenWindowsSettings.Content = CleanEmoji(s.BtnOpenWindowsSettings);
+        SetCardHeader(CardTheme, s.ThemeTitle, s.ThemeDesc);
 
         TxtAboutApp.Text = $"PingArmor v{AppVersion.Current}";
-        TxtAboutIconCredit.Text = currentLang switch
-        {
-            AppLanguage.Kk => "Қолданба белгішесі: Magnific (Flaticon)",
-            AppLanguage.En => "Application icon created by Magnific (Flaticon)",
-            _ => "Иконка приложения: Magnific (Flaticon)"
-        };
-    }
 
-    private static string CleanEmoji(string text)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return text;
-        return System.Text.RegularExpressions.Regex.Replace(text, @"^[\p{Cs}\p{So}\p{Sk}\s⚡📶🚀🔔🚫🌐🛡️🧹]+", "").Trim();
+        UpdateLanguageButtonHighlight();
+        UpdateThemeButtonHighlight();
     }
 
     private static void SetCardHeader(CardControl card, string title, string description)
     {
         var sp = new StackPanel();
         sp.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold, FontSize = 14 });
-        sp.Children.Add(new TextBlock { Text = description, Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(161, 161, 170)), FontSize = 12, Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap });
+        sp.Children.Add(new TextBlock { Text = description, Foreground = ThemeBrush("TextFillColorSecondaryBrush"), FontSize = 12, Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap });
         card.Header = sp;
     }
+
+    private static System.Windows.Media.Brush ThemeBrush(string key)
+        => System.Windows.Application.Current?.TryFindResource(key) as System.Windows.Media.Brush
+           ?? System.Windows.Media.Brushes.Gray;
 
     protected override void OnClosing(CancelEventArgs e)
     {
