@@ -1,0 +1,40 @@
+name: CI
+
+# Runs on every commit to main and on pull requests, but only builds and tests.
+# It does NOT publish/package the application — that happens in the Release workflow on a version tag.
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore PingArmor.slnx
+
+      - name: Build Solution
+        run: dotnet build PingArmor.slnx -c Release --no-restore
+
+      - name: Run Automated Tests
+        run: dotnet test PingArmor.slnx -c Release --no-build --verbosity normal

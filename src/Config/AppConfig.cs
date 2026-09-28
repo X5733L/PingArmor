@@ -33,6 +33,11 @@ public class AppConfig
     public string Language { get; set; } = "ru";
     public List<string> ExcludeAdapters { get; set; } = new();
 
+    /// <summary>
+    /// Minimum severity written to the log file: debug | info | warn | error.
+    /// </summary>
+    public string LogLevel { get; set; } = "debug";
+
     [JsonIgnore]
     private readonly object _excludeLock = new();
 

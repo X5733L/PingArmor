@@ -84,6 +84,7 @@ public static class Program
 
         var config = AppConfig.Load();
         LocalizationService.SetLanguage(config.Language);
+        LogService.MinimumLevel = LogLevelExtensions.Parse(config.LogLevel, LogLevel.Debug);
         _ = LogService.LogFilePath;
 
         // Process --lang / -l argument

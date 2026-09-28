@@ -145,6 +145,7 @@ On startup, configuration is automatically loaded or created at `configs/config.
   "EnableWlanOptimizer": true,
   "RestoreOnExit": true,
   "Language": "ru",
+  "LogLevel": "debug",
   "ExcludeAdapters": []
 }
 ```
@@ -159,6 +160,7 @@ On startup, configuration is automatically loaded or created at `configs/config.
 - `SecondaryPhysicalMetric`: Metric applied to connected non-primary physical adapters to avoid routing conflicts (default: `50`).
 - `EnableWlanOptimizer`: Toggles native Wi-Fi background scan suppression (default: `true`).
 - `RestoreOnExit`: Reverts metrics, DNS policies and IPv6 bindings to the captured snapshot when PingArmor exits (default: `true`).
+- `LogLevel`: Minimum severity written to `logs/pingarmor.log`: `debug`, `info`, `warn`, or `error` (default: `debug`).
 - `ExcludeAdapters`: List of adapter names or descriptions to ignore during optimization.
 
 ---

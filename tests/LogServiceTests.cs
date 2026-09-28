@@ -119,4 +119,51 @@ public class LogServiceTests : IDisposable
         Assert.EndsWith("logs", dir);
         Assert.True(Directory.Exists(dir));
     }
+
+    [Fact]
+    public void Log_InfoMessage_IncludesLevelTag()
+    {
+        LogService.Log(LogLevel.Info, "level info test");
+
+        var recent = LogService.GetRecentLogs();
+        Assert.Contains(recent, l => l.Contains("[INFO]") && l.Contains("level info test"));
+    }
+
+    [Fact]
+    public void Log_ErrorMarker_InfersErrorLevel()
+    {
+        LogService.Log("[-] something failed");
+
+        var recent = LogService.GetRecentLogs();
+        Assert.Contains(recent, l => l.Contains("[ERROR]") && l.Contains("something failed"));
+    }
+
+    [Fact]
+    public void Log_WarningMarker_InfersWarnLevel()
+    {
+        LogService.Log("[!] heads up");
+
+        var recent = LogService.GetRecentLogs();
+        Assert.Contains(recent, l => l.Contains("[WARN]") && l.Contains("heads up"));
+    }
+
+    [Fact]
+    public void Log_BelowMinimumLevel_IsFiltered()
+    {
+        var previous = LogService.MinimumLevel;
+        try
+        {
+            LogService.MinimumLevel = LogLevel.Warn;
+            LogService.Log(LogLevel.Info, "should-be-filtered");
+            LogService.Log(LogLevel.Warn, "should-be-kept");
+
+            var recent = LogService.GetRecentLogs();
+            Assert.DoesNotContain(recent, l => l.Contains("should-be-filtered"));
+            Assert.Contains(recent, l => l.Contains("should-be-kept"));
+        }
+        finally
+        {
+            LogService.MinimumLevel = previous;
+        }
+    }
 }

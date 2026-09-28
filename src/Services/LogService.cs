@@ -16,6 +16,12 @@ public static class LogService
 
     private static string? _customLogFilePath;
 
+    /// <summary>
+    /// Entries below this severity are discarded. Defaults to <see cref="LogLevel.Debug"/> so
+    /// existing behavior is unchanged until a minimum is configured.
+    /// </summary>
+    public static LogLevel MinimumLevel { get; set; } = LogLevel.Debug;
+
     public static string LogDirectoryPath
     {
         get
@@ -124,9 +130,22 @@ public static class LogService
         catch { }
     }
 
+    /// <summary>
+    /// Logs a message, inferring its level from the conventional leading marker.
+    /// </summary>
     public static void Log(string message)
+        => Log(LogLevelExtensions.InferFromMessage(message), message);
+
+    public static void Debug(string message) => Log(LogLevel.Debug, message);
+    public static void Info(string message) => Log(LogLevel.Info, message);
+    public static void Warn(string message) => Log(LogLevel.Warn, message);
+    public static void Error(string message) => Log(LogLevel.Error, message);
+
+    public static void Log(LogLevel level, string message)
     {
-        string entry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
+        if (level < MinimumLevel) return;
+
+        string entry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level.ToTag()}] {message}";
 
         lock (_lock)
         {

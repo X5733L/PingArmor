@@ -1,19 +1,45 @@
-name: Build, Test and Release
+name: Release
 
+# Only runs when a version tag (v*) is pushed, or when triggered manually.
+# Pushing a normal commit to main does NOT trigger this workflow.
 on:
   push:
-    branches: [ "main" ]
     tags: [ "v*" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  build-and-test:
-    name: Build, Test & Package
+  test:
+    name: Build & Test
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore PingArmor.slnx
+
+      - name: Build Solution
+        run: dotnet build PingArmor.slnx -c Release --no-restore
+
+      - name: Run Automated Tests
+        run: dotnet test PingArmor.slnx -c Release --no-build --verbosity normal
+
+  release:
+    name: Build & Publish Release
+    needs: test
     runs-on: windows-latest
 
     steps:
@@ -30,12 +56,6 @@ jobs:
       - name: Restore Dependencies
         run: dotnet restore PingArmor.slnx
 
-      - name: Build Solution
-        run: dotnet build PingArmor.slnx -c Release --no-restore
-
-      - name: Run Automated Tests
-        run: dotnet test PingArmor.slnx -c Release --no-build --verbosity normal
-
       - name: Determine Application Version
         id: versioning
         shell: pwsh
@@ -44,7 +64,12 @@ jobs:
           if ($refName -match '^v?(\d+\.\d+\.\d+.*)$') {
               $appVersion = $Matches[1]
           } else {
-              $appVersion = "1.0.0"
+              # Manual run without a tag: fall back to the version declared in the project file.
+              [xml]$csproj = Get-Content src/PingArmor.csproj
+              $appVersion = @($csproj.Project.PropertyGroup.Version) |
+                  Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+                  Select-Object -First 1
+              if ([string]::IsNullOrWhiteSpace($appVersion)) { $appVersion = "1.0.0" }
           }
           Write-Host "Resolved Application Version: $appVersion"
           "APP_VERSION=$appVersion" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8

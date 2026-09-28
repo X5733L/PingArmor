@@ -145,6 +145,7 @@ PingArmor.exe --lang ru    # Русский
   "EnableWlanOptimizer": true,
   "RestoreOnExit": true,
   "Language": "kk",
+  "LogLevel": "debug",
   "ExcludeAdapters": []
 }
 ```
@@ -159,6 +160,7 @@ PingArmor.exe --lang ru    # Русский
 - `SecondaryPhysicalMetric`: қосылған қосалқы физикалық адаптерлер метрикасы, маршрут қақтығысын болдырмау үшін (әдепкі: `50`).
 - `EnableWlanOptimizer`: Wi-Fi желілерін фонда іздеуді бұғаттау (әдепкі: `true`).
 - `RestoreOnExit`: PingArmor жабылғанда метрикаларды, DNS саясаттарын және IPv6 байланыстарын суретке қайтару (әдепкі: `true`).
+- `LogLevel`: `logs/pingarmor.log` файлына жазылатын ең төменгі деңгей: `debug`, `info`, `warn` немесе `error` (әдепкі: `debug`).
 - `ExcludeAdapters`: оңтайландыру кезінде ескерілмейтін адаптерлер тізімі.
 
 ---
