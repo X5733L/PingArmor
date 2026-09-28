@@ -119,6 +119,20 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
+
+                <ui:Button
+                    x:Name="ScrollToBottomButton"
+                    Margin="0,0,16,16"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Appearance="Secondary"
+                    AutomationProperties.Name="{Binding Texts.LogScrollToBottom}"
+                    Click="BtnScrollToBottom_Click"
+                    ToolTip="{Binding Texts.LogScrollToBottom}">
+                    <ui:Button.Icon>
+                        <ui:SymbolIcon Symbol="ArrowDown24" />
+                    </ui:Button.Icon>
+                </ui:Button>
             </Grid>
         </Border>
     </Grid>

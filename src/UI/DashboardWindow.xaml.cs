@@ -85,6 +85,7 @@ public partial class DashboardWindow : FluentWindow
         if (tag == "Adapters") AdaptersPage.Refresh();
         if (tag == "Rollback") UpdateRollbackCard();
         if (tag == "Settings") SettingsPage.Sync();
+        if (tag == "Log") LogPage.ScrollToEnd();
     }
 
     #region Overview Page
