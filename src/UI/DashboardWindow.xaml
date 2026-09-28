@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:views="clr-namespace:PingArmor.UI.Views"
     Title="{Binding Texts.DashboardTitle}"
     Icon="pack://application:,,,/app.ico"
     Width="980"
@@ -142,70 +143,14 @@
                     <!-- Header & Command Bar -->
                     <Grid Grid.Row="0" Margin="0,0,0,16">
                         <TextBlock x:Name="TxtAdaptersTitle" Text="{Binding Texts.NavAdapters}" Style="{StaticResource PageTitleTextStyle}" />
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <ui:Button x:Name="BtnAdaptersRefresh" Content="{Binding Texts.AdaptersRefresh}" Margin="0,0,8,0" Click="BtnRefreshAdapters_Click">
-                                <ui:Button.Icon>
-                                    <ui:SymbolIcon Symbol="ArrowClockwise24" />
-                                </ui:Button.Icon>
-                            </ui:Button>
-                            <ui:Button x:Name="BtnAdaptersOptimize" Content="{Binding Texts.OptimizeNowShort}" Appearance="Primary" Click="BtnOptimizeNow_Click">
-                                <ui:Button.Icon>
-                                    <ui:SymbolIcon Symbol="Flash24" />
-                                </ui:Button.Icon>
-                            </ui:Button>
-                        </StackPanel>
+                        <ui:Button x:Name="BtnAdaptersOptimize" Content="{Binding Texts.OptimizeNowShort}" Appearance="Primary" HorizontalAlignment="Right" Click="BtnOptimizeNow_Click">
+                            <ui:Button.Icon>
+                                <ui:SymbolIcon Symbol="Flash24" />
+                            </ui:Button.Icon>
+                        </ui:Button>
                     </Grid>
 
-                    <!-- Adapters DataGrid -->
-                    <DataGrid
-                        x:Name="GridAdapters"
-                        Grid.Row="1"
-                        AutoGenerateColumns="False"
-                        CanUserAddRows="False"
-                        CanUserDeleteRows="False"
-                        IsReadOnly="False"
-                        HeadersVisibility="Column"
-                        GridLinesVisibility="Horizontal"
-                        SelectionMode="Single"
-                        RowHeight="36">
-                        <DataGrid.Columns>
-                            <DataGridCheckBoxColumn
-                                x:Name="ColExclude"
-                                Header="Исключить"
-                                Binding="{Binding IsExcluded, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                Width="105" />
-                            <DataGridTextColumn
-                                x:Name="ColName"
-                                Header="Адаптер"
-                                Binding="{Binding Name}"
-                                Width="*"
-                                IsReadOnly="True" />
-                            <DataGridTextColumn
-                                x:Name="ColType"
-                                Header="Тип"
-                                Binding="{Binding Type}"
-                                Width="140"
-                                IsReadOnly="True" />
-                            <DataGridTextColumn
-                                x:Name="ColStatus"
-                                Header="Состояние"
-                                Binding="{Binding Status}"
-                                Width="110"
-                                IsReadOnly="True" />
-                            <DataGridTextColumn
-                                x:Name="ColMetric"
-                                Header="Метрика"
-                                Binding="{Binding Metric}"
-                                Width="90"
-                                IsReadOnly="True" />
-                            <DataGridTextColumn
-                                x:Name="ColInternet"
-                                Header="Интернет"
-                                Binding="{Binding Internet}"
-                                Width="90"
-                                IsReadOnly="True" />
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <views:AdaptersView x:Name="AdaptersPage" Grid.Row="1" />
                 </Grid>
 
                 <!-- Page 3: Settings (Tuning) -->

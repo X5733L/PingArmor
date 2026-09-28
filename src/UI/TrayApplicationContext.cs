@@ -42,6 +42,9 @@ public class TrayApplicationContext : ApplicationContext
         _engine = engine;
         _monitor = monitor;
 
+        // Composition root for XAML-declared views (must be ready before any window is built).
+        AppServices.Initialize(_config, _engine, _monitor, AppendLog);
+
         // Initialize language from configuration
         LocalizationService.SetLanguage(_config.Language);
 

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -29,7 +28,6 @@ public partial class DashboardWindow : FluentWindow
     private readonly NetworkMonitor _monitor;
     private readonly Action<string> _logAppender;
 
-    private readonly ObservableCollection<AdapterRowItem> _adapterRows = new();
     private OptimizationPlan? _lastPlan;
     private bool _isUpdatingSwitches;
 
@@ -44,7 +42,6 @@ public partial class DashboardWindow : FluentWindow
         Loaded += (_, _) => ThemeService.RegisterWindow(this);
         DataContext = LocalizationService.Current;
 
-        GridAdapters.ItemsSource = _adapterRows;
         LocalizationService.LanguageChanged += OnLanguageChanged;
         LogService.LogAppended += OnLogAppended;
 
@@ -57,7 +54,6 @@ public partial class DashboardWindow : FluentWindow
 
         UpdateLocalization();
         SyncTuningSwitches();
-        RefreshAdaptersList();
         UpdateRollbackCard();
     }
 
@@ -86,7 +82,7 @@ public partial class DashboardWindow : FluentWindow
                 break;
             case 1:
                 ShowPageByTag("Adapters");
-                RefreshAdaptersList();
+                AdaptersPage.Refresh();
                 break;
             case 2:
                 ShowPageByTag("Settings");
@@ -110,7 +106,7 @@ public partial class DashboardWindow : FluentWindow
         PageRollback.Visibility = (tag == "Rollback") ? Visibility.Visible : Visibility.Collapsed;
         PageLog.Visibility = (tag == "Log") ? Visibility.Visible : Visibility.Collapsed;
 
-        if (tag == "Adapters") RefreshAdaptersList();
+        if (tag == "Adapters") AdaptersPage.Refresh();
         if (tag == "Rollback") UpdateRollbackCard();
         if (tag == "Settings") SyncTuningSwitches();
     }
@@ -196,61 +192,7 @@ public partial class DashboardWindow : FluentWindow
 
     #region Adapters Page
 
-    public void RefreshAdaptersList()
-    {
-        if (!Dispatcher.CheckAccess())
-        {
-            Dispatcher.InvokeAsync(RefreshAdaptersList);
-            return;
-        }
-
-        _adapterRows.Clear();
-        var adapters = _engine.GetAdapters();
-        var excludedSet = new HashSet<string>(_config.GetExcludeSnapshot(), StringComparer.OrdinalIgnoreCase);
-        var s = LocalizationService.Strings;
-
-        foreach (var a in adapters)
-        {
-            bool isExcluded = excludedSet.Contains(a.Name) || excludedSet.Contains(a.Description);
-            string statusStr = a.IsUp ? s.AdaptersActiveTag : s.AdaptersDisconnectedTag;
-            string internetStr = a.HasInternet ? "✓" : "-";
-
-            var row = new AdapterRowItem(a.Name, a.Type.ToString(), statusStr, a.CurrentIPv4Metric.ToString(), internetStr, isExcluded);
-            row.PropertyChanged += (snd, args) =>
-            {
-                if (args.PropertyName == nameof(AdapterRowItem.IsExcluded))
-                {
-                    OnAdapterExclusionToggled(row.Name, row.IsExcluded);
-                }
-            };
-            _adapterRows.Add(row);
-        }
-    }
-
-    private void BtnRefreshAdapters_Click(object sender, RoutedEventArgs e)
-    {
-        RefreshAdaptersList();
-    }
-
-    private void OnAdapterExclusionToggled(string adapterName, bool isExcluded)
-    {
-        if (string.IsNullOrEmpty(adapterName)) return;
-
-        if (isExcluded)
-        {
-            if (_config.AddExclusion(adapterName))
-            {
-                _logAppender($"[*] Adapter '{adapterName}' added to exclusions.");
-            }
-        }
-        else
-        {
-            _config.RemoveExclusion(adapterName);
-            _logAppender($"[*] Adapter '{adapterName}' removed from exclusions.");
-        }
-        TrySaveConfig();
-        _monitor.TriggerManualCheck();
-    }
+    // Adapters are handled by AdaptersView / AdaptersViewModel (see UI/Views, UI/ViewModels).
 
     #endregion
 
@@ -587,20 +529,12 @@ public partial class DashboardWindow : FluentWindow
         UpdateLocalization();
         UpdateOverviewState();
         UpdateRollbackCard();
-        RefreshAdaptersList();
         SyncTuningSwitches();
     }
 
     private void UpdateLocalization()
     {
         var s = LocalizationService.Strings;
-
-        ColExclude.Header = s.AdaptersHeaderExclude;
-        ColName.Header = s.AdaptersHeaderName;
-        ColType.Header = s.AdaptersHeaderType;
-        ColStatus.Header = s.AdaptersHeaderStatus;
-        ColMetric.Header = s.AdaptersHeaderMetric;
-        ColInternet.Header = s.AdaptersHeaderInternet;
 
         SetCardHeader(CardGamingMode, s.GamingMode, s.WlanOptimizerDesc);
         SetCardHeader(CardMetricOpt, s.MetricOptimizationTitle, s.MetricOptimizationDesc);
@@ -649,37 +583,3 @@ public partial class DashboardWindow : FluentWindow
     #endregion
 }
 
-public class AdapterRowItem : INotifyPropertyChanged
-{
-    public string Name { get; }
-    public string Type { get; }
-    public string Status { get; }
-    public string Metric { get; }
-    public string Internet { get; }
-
-    private bool _isExcluded;
-    public bool IsExcluded
-    {
-        get => _isExcluded;
-        set
-        {
-            if (_isExcluded != value)
-            {
-                _isExcluded = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsExcluded)));
-            }
-        }
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public AdapterRowItem(string name, string type, string status, string metric, string internet, bool isExcluded)
-    {
-        Name = name;
-        Type = type;
-        Status = status;
-        Metric = metric;
-        Internet = internet;
-        _isExcluded = isExcluded;
-    }
-}

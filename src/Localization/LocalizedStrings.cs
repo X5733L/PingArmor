@@ -143,6 +143,14 @@ public class LocalizedStrings
     public required string InternetYes { get; init; }
     public required string InternetNo { get; init; }
     public required string PrimaryAdapterDetailsFormat { get; init; }
+    public required string AdapterTypeEthernet { get; init; }
+    public required string AdapterTypeWiFi { get; init; }
+    public required string AdapterTypeVirtual { get; init; }
+    public required string AdapterTypeOther { get; init; }
+    public required string AdaptersGroupPhysical { get; init; }
+    public required string AdaptersGroupVirtual { get; init; }
+    public required string AdaptersEmpty { get; init; }
+    public required string AdaptersSearchPlaceholder { get; init; }
 
     public static readonly LocalizedStrings Ru = new()
     {
@@ -267,6 +275,14 @@ public class LocalizedStrings
         InternetYes = "Есть",
         InternetNo = "Нет",
         PrimaryAdapterDetailsFormat = "Тип: {0} • Метрика IPv4: {1} • Интернет: {2}",
+        AdapterTypeEthernet = "Ethernet",
+        AdapterTypeWiFi = "Wi-Fi",
+        AdapterTypeVirtual = "Виртуальный / VPN",
+        AdapterTypeOther = "Прочее",
+        AdaptersGroupPhysical = "Физические адаптеры",
+        AdaptersGroupVirtual = "Виртуальные и VPN",
+        AdaptersEmpty = "Сетевые адаптеры не найдены",
+        AdaptersSearchPlaceholder = "Поиск по адаптерам",
         ResetConfirmTitle = "Подтверждение сброса",
         ResetConfirmMessage = "Вы действительно хотите сбросить сетевой стек Windows (Winsock, TCP/IP, AutomaticMetric)?\nВсе сетевые настройки вернутся к заводским значениям.",
         ResetCompletedMessage = "Сетевой стек Windows успешно сброшен к заводским параметрам. Рекомендуется перезагрузить компьютер.",
@@ -409,6 +425,14 @@ public class LocalizedStrings
         InternetYes = "Available",
         InternetNo = "Unavailable",
         PrimaryAdapterDetailsFormat = "Type: {0} • IPv4 metric: {1} • Internet: {2}",
+        AdapterTypeEthernet = "Ethernet",
+        AdapterTypeWiFi = "Wi-Fi",
+        AdapterTypeVirtual = "Virtual / VPN",
+        AdapterTypeOther = "Other",
+        AdaptersGroupPhysical = "Physical adapters",
+        AdaptersGroupVirtual = "Virtual & VPN",
+        AdaptersEmpty = "No network adapters found",
+        AdaptersSearchPlaceholder = "Search adapters",
         ResetConfirmTitle = "Confirm Reset",
         ResetConfirmMessage = "Are you sure you want to reset the Windows network stack (Winsock, TCP/IP, AutomaticMetric)?\nAll network interfaces will revert to factory defaults.",
         ResetCompletedMessage = "Windows network stack was successfully reset to factory defaults. A system restart is recommended.",
@@ -551,6 +575,14 @@ public class LocalizedStrings
         InternetYes = "Бар",
         InternetNo = "Жоқ",
         PrimaryAdapterDetailsFormat = "Түрі: {0} • IPv4 метрикасы: {1} • Интернет: {2}",
+        AdapterTypeEthernet = "Ethernet",
+        AdapterTypeWiFi = "Wi-Fi",
+        AdapterTypeVirtual = "Виртуалды / VPN",
+        AdapterTypeOther = "Басқа",
+        AdaptersGroupPhysical = "Физикалық адаптерлер",
+        AdaptersGroupVirtual = "Виртуалды және VPN",
+        AdaptersEmpty = "Желілік адаптерлер табылмады",
+        AdaptersSearchPlaceholder = "Адаптерлерді іздеу",
         ResetConfirmTitle = "Тастауды растау",
         ResetConfirmMessage = "Windows желілік стекін (Winsock, TCP/IP, AutomaticMetric) шынымен тастағыңыз келе ме?\nБарлық желілік баптаулар зауыттық күйге оралады.",
         ResetCompletedMessage = "Windows желілік стекі зауыттық күйге сәтті тасталды. Компьютерді қайта қосу ұсынылады.",
