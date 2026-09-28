@@ -90,7 +90,7 @@
                     <views:OverviewView x:Name="OverviewPage" />
                 </Grid>
 
-<!-- Page 2: Adapters -->
+                <!-- Page 2: Adapters -->
                 <Grid x:Name="PageAdapters" Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -107,7 +107,7 @@
                         </ui:Button>
                     </Grid>
 
-                    <views:AdaptersView x:Name="AdaptersPage" Grid.Row="1" />
+                    <ContentControl x:Name="AdaptersHost" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
                 </Grid>
 
                                 <!-- Page 3: Settings (Tuning) -->
@@ -119,7 +119,7 @@
 
                     <TextBlock x:Name="TxtSettingsTitle" Grid.Row="0" Text="{Binding Texts.NavTuning}" Style="{StaticResource PageTitleTextStyle}" Margin="0,0,0,16" />
 
-                    <views:SettingsView x:Name="SettingsPage" Grid.Row="1" />
+                    <ContentControl x:Name="SettingsHost" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
                 </Grid>
 
 <!-- Page 4: Rollback & Reset -->
@@ -179,7 +179,7 @@
 
                     <TextBlock x:Name="TxtLogTitle" Grid.Row="0" Text="{Binding Texts.NavLog}" Style="{StaticResource PageTitleTextStyle}" Margin="0,0,0,16" />
 
-                    <views:LogView x:Name="LogPage" Grid.Row="1" />
+                    <ContentControl x:Name="LogHost" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
                 </Grid>
             </Grid>
         </Grid>

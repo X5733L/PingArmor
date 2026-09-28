@@ -24,4 +24,6 @@ public partial class SettingsView : System.Windows.Controls.UserControl
 
     /// <summary>Re-reads the persisted settings into the bindings.</summary>
     public void Sync() => _viewModel?.Sync();
+
+    private void OnUnloaded(object sender, System.Windows.RoutedEventArgs e) => _viewModel?.Dispose();
 }

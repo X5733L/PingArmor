@@ -45,6 +45,8 @@ public partial class OverviewView : System.Windows.Controls.UserControl
         {
             _monitor.OptimizationApplied -= OnOptimizationApplied;
         }
+
+        _viewModel?.Dispose();
     }
 
     private void OnOptimizationApplied(OptimizationResult result)

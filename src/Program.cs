@@ -334,6 +334,10 @@ public static class Program
             wpfApp.InitializeComponent();
         }
 
+        // The dashboard window closes (and is recreated on demand), so the app must not
+        // shut down when its last window closes.
+        wpfApp.ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
+
         // Apply the configured theme before any window is created.
         ThemeService.Initialize(config.Theme);
 

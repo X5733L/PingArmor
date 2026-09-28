@@ -41,14 +41,21 @@ public partial class LogView : UserControl
         // Defer until the list has performed layout, otherwise ScrollIntoView is a no-op.
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            _scrollViewer ??= FindDescendant<ScrollViewer>(LogList);
-            if (LogList.Items.Count == 0)
+            try
             {
-                return;
-            }
+                _scrollViewer ??= FindDescendant<ScrollViewer>(LogList);
+                if (LogList.Items.Count == 0)
+                {
+                    return;
+                }
 
-            LogList.ScrollIntoView(LogList.Items[LogList.Items.Count - 1]);
-            _scrollViewer?.ScrollToEnd();
+                LogList.ScrollIntoView(LogList.Items[LogList.Items.Count - 1]);
+                _scrollViewer?.ScrollToEnd();
+            }
+            catch (InvalidOperationException)
+            {
+                // The list template is not applied yet (e.g. the window is not shown).
+            }
         }), DispatcherPriority.Background);
     }
 
@@ -101,6 +108,7 @@ public partial class LogView : UserControl
         {
             _viewModel.Entries.CollectionChanged -= OnEntriesChanged;
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _viewModel.Dispose();
         }
     }
 

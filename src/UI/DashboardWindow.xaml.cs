@@ -7,6 +7,7 @@ using PingArmor.Localization;
 using PingArmor.Models;
 using PingArmor.Services;
 using PingArmor.UI.Services;
+using PingArmor.UI.Views;
 using Wpf.Ui.Controls;
 using MessageBoxButton = System.Windows.MessageBoxButton;
 using MessageBoxResult = System.Windows.MessageBoxResult;
@@ -18,6 +19,10 @@ public partial class DashboardWindow : FluentWindow
 {
     private readonly NetworkMonitor _monitor;
     private readonly Action<string> _logAppender;
+
+    private AdaptersView? _adaptersView;
+    private SettingsView? _settingsView;
+    private LogView? _logView;
 
     public DashboardWindow(NetworkMonitor monitor, Action<string> logAppender)
     {
@@ -58,11 +63,9 @@ public partial class DashboardWindow : FluentWindow
                 break;
             case 1:
                 ShowPageByTag("Adapters");
-                AdaptersPage.Refresh();
                 break;
             case 2:
                 ShowPageByTag("Settings");
-                SettingsPage.Sync();
                 break;
             case 3:
                 ShowPageByTag("Rollback");
@@ -82,10 +85,42 @@ public partial class DashboardWindow : FluentWindow
         PageRollback.Visibility = (tag == "Rollback") ? Visibility.Visible : Visibility.Collapsed;
         PageLog.Visibility = (tag == "Log") ? Visibility.Visible : Visibility.Collapsed;
 
-        if (tag == "Adapters") AdaptersPage.Refresh();
+        if (tag == "Adapters") EnsureAdapters();
         if (tag == "Rollback") UpdateRollbackCard();
-        if (tag == "Settings") SettingsPage.Sync();
-        if (tag == "Log") LogPage.ScrollToEnd();
+        if (tag == "Settings") EnsureSettings();
+        if (tag == "Log") EnsureLog();
+    }
+
+    // Page views are created on first navigation to keep the resident memory of an idle dashboard low.
+
+    private void EnsureAdapters()
+    {
+        if (_adaptersView is null)
+        {
+            _adaptersView = new AdaptersView();
+            AdaptersHost.Content = _adaptersView;
+        }
+        _adaptersView.Refresh();
+    }
+
+    private void EnsureSettings()
+    {
+        if (_settingsView is null)
+        {
+            _settingsView = new SettingsView();
+            SettingsHost.Content = _settingsView;
+        }
+        _settingsView.Sync();
+    }
+
+    private void EnsureLog()
+    {
+        if (_logView is null)
+        {
+            _logView = new LogView();
+            LogHost.Content = _logView;
+        }
+        _logView.ScrollToEnd();
     }
 
     #region Overview Page
@@ -179,15 +214,9 @@ public partial class DashboardWindow : FluentWindow
         => System.Windows.Application.Current?.TryFindResource(key) as System.Windows.Media.Brush
            ?? System.Windows.Media.Brushes.Gray;
 
-    protected override void OnClosing(CancelEventArgs e)
-    {
-        // Don't kill application on X close; hide to background tray
-        e.Cancel = true;
-        Hide();
-    }
-
     protected override void OnClosed(EventArgs e)
     {
+        ThemeService.UnregisterWindow(this);
         LocalizationService.LanguageChanged -= OnLanguageChanged;
         base.OnClosed(e);
     }

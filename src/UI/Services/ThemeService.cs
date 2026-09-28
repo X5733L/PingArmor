@@ -42,6 +42,31 @@ public static class ThemeService
         UpdateSystemWatcher();
     }
 
+    /// <summary>Detaches a window that is being closed so the OS-theme watcher no longer references it.</summary>
+    public static void UnregisterWindow(Window window)
+    {
+        if (!ReferenceEquals(_window, window)) return;
+
+        if (_isWatchingSystem)
+        {
+            try
+            {
+                if (window.IsLoaded)
+                {
+                    SystemThemeWatcher.UnWatch(window);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Window handle is already gone.
+            }
+
+            _isWatchingSystem = false;
+        }
+
+        _window = null;
+    }
+
     /// <summary>Applies the requested theme mode: "System", "Light" or "Dark" (case-insensitive).</summary>
     public static void Apply(string? mode)
     {

@@ -9,9 +9,8 @@ namespace PingArmor.Services;
 public static class LogService
 {
     private static readonly object _lock = new();
-    private static readonly List<string> _memoryBuffer = new(1000);
-    private static readonly List<LogEntry> _entries = new(1000);
-    public const int MaxMemoryLines = 2000;
+    private static readonly List<LogEntry> _entries = new(600);
+    public const int MaxMemoryLines = 500;
     public const long MaxFileSizeBytes = 5 * 1024 * 1024; // 5 MB
 
     public static event Action<string>? LogAppended;
@@ -125,10 +124,9 @@ public static class LogService
             string path = LogFilePath;
             if (File.Exists(path))
             {
-                var lines = File.ReadLines(path).TakeLast(500);
+                var lines = File.ReadLines(path).TakeLast(MaxMemoryLines);
                 lock (_lock)
                 {
-                    _memoryBuffer.AddRange(lines);
                     foreach (string line in lines)
                     {
                         if (TryParseLine(line, out var parsedEntry))
@@ -162,12 +160,6 @@ public static class LogService
 
         lock (_lock)
         {
-            if (_memoryBuffer.Count >= MaxMemoryLines)
-            {
-                _memoryBuffer.RemoveAt(0);
-            }
-            _memoryBuffer.Add(line);
-
             if (_entries.Count >= MaxMemoryLines)
             {
                 _entries.RemoveAt(0);
@@ -194,7 +186,7 @@ public static class LogService
     {
         lock (_lock)
         {
-            return _memoryBuffer.ToList();
+            return _entries.Select(e => e.ToDisplayString()).ToList();
         }
     }
 
@@ -211,7 +203,6 @@ public static class LogService
     {
         lock (_lock)
         {
-            _memoryBuffer.Clear();
             _entries.Clear();
         }
     }

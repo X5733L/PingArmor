@@ -22,6 +22,7 @@ public partial class AdaptersView : System.Windows.Controls.UserControl
         }
 
         Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     /// <summary>Reloads the adapter list (called when the page becomes visible).</summary>
@@ -34,4 +35,6 @@ public partial class AdaptersView : System.Windows.Controls.UserControl
             Refresh();
         }
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) => _viewModel?.Dispose();
 }
