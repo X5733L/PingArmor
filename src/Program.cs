@@ -342,7 +342,7 @@ public static class Program
         using var monitor = new NetworkMonitor(engine, config);
         AppServices.Initialize(config, engine, monitor, LogService.Log);
 
-        var tray = new TrayIconViewModel(config, monitor);
+        var tray = new TrayIconViewModel(config, monitor, LogService.Log);
         var taskbarIcon = (TaskbarIcon)wpfApp.Resources["TrayIcon"];
         taskbarIcon.DataContext = tray;
         tray.AttachNotifier((title, message, isWarning) =>

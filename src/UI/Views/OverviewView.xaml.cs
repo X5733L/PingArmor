@@ -17,7 +17,7 @@ public partial class OverviewView : System.Windows.Controls.UserControl
         if (AppServices.IsReady)
         {
             _monitor = AppServices.Monitor!;
-            _viewModel = new OverviewViewModel(AppServices.Config!, _monitor);
+            _viewModel = new OverviewViewModel(AppServices.Config!, _monitor, AppServices.LogAppender);
             DataContext = _viewModel;
         }
 

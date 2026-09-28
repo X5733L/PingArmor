@@ -68,7 +68,7 @@ public class NetworkMonitor : IDisposable
         int intervalMs = Math.Max(3, _config.CheckIntervalSeconds) * 1000;
         _watchdogTimer.Change(intervalMs, intervalMs);
 
-        RaiseLog($"[+] Background monitoring started (check interval: {_config.CheckIntervalSeconds}s).");
+        RaiseLog($"[+] Protection enabled. Background monitoring started (check interval: {_config.CheckIntervalSeconds}s).");
         Raise(StatusChanged, true);
 
         // Ensure system settings backup exists before first evaluation
@@ -126,7 +126,7 @@ public class NetworkMonitor : IDisposable
 
         cts?.Dispose();
 
-        RaiseLog("[*] Monitoring paused.");
+        RaiseLog("[*] Protection paused. Background monitoring stopped.");
         Raise(StatusChanged, false);
     }
 

@@ -4,13 +4,13 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.Windows;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using PingArmor.Config;
 using PingArmor.Localization;
 using PingArmor.Models;
 using PingArmor.Services;
 using Wpf.Ui.Controls;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 
 namespace PingArmor.UI.ViewModels;
 
@@ -25,11 +25,12 @@ public sealed partial class TrayIconViewModel : ViewModelBase
 
     private readonly AppConfig _config;
     private readonly NetworkMonitor _monitor;
-    private readonly Dictionary<string, (Icon Icon, IntPtr Handle)> _icons = new();
+    private readonly Action<string> _logAppender;
 
     private OptimizationPlan? _lastPlan;
     private Action<string, string, bool>? _notify;
     private DashboardWindow? _dashboardWindow;
+    private string? _currentColorKey;
 
     [ObservableProperty]
     private bool _isNotElevated;
@@ -67,19 +68,19 @@ public sealed partial class TrayIconViewModel : ViewModelBase
     [ObservableProperty]
     private SymbolRegular _monitoringIcon = SymbolRegular.Pause24;
 
-    public TrayIconViewModel(AppConfig config, NetworkMonitor monitor)
+    public TrayIconViewModel(AppConfig config, NetworkMonitor monitor, Action<string>? logAppender = null)
     {
         _config = config;
         _monitor = monitor;
+        _logAppender = logAppender ?? (_ => { });
 
-        InitShieldIcons();
         IsNotElevated = !Program.IsAdministrator();
-        Icon = GetShieldIcon("green");
 
         _monitor.PlanEvaluated += OnPlanEvaluated;
         _monitor.OptimizationApplied += OnOptimizationApplied;
         _monitor.StatusChanged += OnStatusChanged;
 
+        SetShield("orange");
         UpdateTexts();
         _monitor.Start();
         ApplyState();
@@ -119,8 +120,18 @@ public sealed partial class TrayIconViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleMonitoring()
     {
-        if (_monitor.IsRunning) _monitor.Stop();
-        else _monitor.Start();
+        if (_monitor.IsRunning)
+        {
+            _logAppender("[*] User requested: pause protection.");
+            _monitor.Stop();
+        }
+        else
+        {
+            _logAppender("[*] User requested: resume protection.");
+            _monitor.Start();
+        }
+
+        ApplyState();
     }
 
     [RelayCommand]
@@ -198,7 +209,7 @@ public sealed partial class TrayIconViewModel : ViewModelBase
         SafeInvoke(() =>
         {
             var s = LocalizationService.Strings;
-            Icon = result.Success ? GetShieldIcon("green") : GetShieldIcon("orange");
+            SetShield(result.Success ? "green" : "orange");
 
             if (!_config.ShowNotifications) return;
 
@@ -244,7 +255,7 @@ public sealed partial class TrayIconViewModel : ViewModelBase
             PrimaryAdapterText = _lastPlan?.PrimaryAdapter is { } pausedAdapter
                 ? string.Format(s.PrimaryChannelFormat, pausedAdapter.Name, pausedAdapter.CurrentIPv4Metric)
                 : s.PrimaryChannelNone;
-            Icon = GetShieldIcon("gray");
+            SetShield("gray");
             SetToolTip(s.StatusPaused);
             return;
         }
@@ -253,14 +264,14 @@ public sealed partial class TrayIconViewModel : ViewModelBase
         {
             PrimaryAdapterText = string.Format(s.PrimaryChannelFormat, adapter.Name, adapter.CurrentIPv4Metric);
             StatusText = _lastPlan.NeedsOptimization ? s.StatusAdjusting : s.StatusProtected;
-            Icon = _lastPlan.NeedsOptimization ? GetShieldIcon("orange") : GetShieldIcon("green");
+            SetShield(_lastPlan.NeedsOptimization ? "orange" : "green");
             SetToolTip(_lastPlan.NeedsOptimization ? s.StatusAdjusting : s.StatusProtected, adapter.Name);
         }
         else
         {
             PrimaryAdapterText = s.PrimaryChannelDetecting;
             StatusText = s.StatusInitializing;
-            Icon = GetShieldIcon("orange");
+            SetShield("orange");
             SetToolTip(s.StatusInitializing);
         }
     }
@@ -276,20 +287,28 @@ public sealed partial class TrayIconViewModel : ViewModelBase
         ToolTipText = text.Length <= 127 ? text : text[..127];
     }
 
-    #region Shield icon GDI cache
+    #region Shield icon
 
-    private void InitShieldIcons()
+    /// <summary>
+    /// Assigns a freshly created shield icon for the given state.
+    /// H.NotifyIcon disposes the previous <see cref="Icon"/> when this property changes,
+    /// so cached instances must never be reused.
+    /// </summary>
+    private void SetShield(string colorKey)
     {
-        _icons["green"] = CreateShieldIcon(Color.ForestGreen);
-        _icons["orange"] = CreateShieldIcon(Color.DarkOrange);
-        _icons["crimson"] = CreateShieldIcon(Color.Crimson);
-        _icons["gray"] = CreateShieldIcon(Color.Gray);
+        if (_currentColorKey == colorKey && Icon is not null) return;
+
+        _currentColorKey = colorKey;
+        Icon = CreateShieldIcon(colorKey switch
+        {
+            "orange" => Color.DarkOrange,
+            "crimson" => Color.Crimson,
+            "gray" => Color.Gray,
+            _ => Color.ForestGreen
+        });
     }
 
-    private Icon GetShieldIcon(string key)
-        => _icons.TryGetValue(key, out var tuple) ? tuple.Icon : SystemIcons.Application;
-
-    private static (Icon Icon, IntPtr Handle) CreateShieldIcon(Color color)
+    private static Icon CreateShieldIcon(Color color)
     {
         const int size = 32;
         using var bmp = new Bitmap(size, size);
@@ -314,9 +333,18 @@ public sealed partial class TrayIconViewModel : ViewModelBase
         }
 
         IntPtr hIcon = bmp.GetHicon();
-        var icon = (Icon)Icon.FromHandle(hIcon).Clone();
-        return (icon, hIcon);
+        try
+        {
+            using var fromHandle = Icon.FromHandle(hIcon);
+            return (Icon)fromHandle.Clone();
+        }
+        finally
+        {
+            DestroyIcon(hIcon);
+        }
     }
+
+    #endregion
 
     public override void Dispose()
     {
@@ -325,21 +353,5 @@ public sealed partial class TrayIconViewModel : ViewModelBase
         _monitor.PlanEvaluated -= OnPlanEvaluated;
         _monitor.OptimizationApplied -= OnOptimizationApplied;
         _monitor.StatusChanged -= OnStatusChanged;
-
-        foreach (var tuple in _icons.Values)
-        {
-            try
-            {
-                tuple.Icon.Dispose();
-                if (tuple.Handle != IntPtr.Zero)
-                {
-                    DestroyIcon(tuple.Handle);
-                }
-            }
-            catch { }
-        }
-        _icons.Clear();
     }
-
-    #endregion
 }

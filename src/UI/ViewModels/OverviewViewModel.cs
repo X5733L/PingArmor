@@ -21,6 +21,7 @@ public sealed partial class OverviewViewModel : ViewModelBase
 {
     private readonly AppConfig _config;
     private readonly NetworkMonitor _monitor;
+    private readonly Action<string> _logAppender;
 
     private OptimizationPlan? _lastPlan;
     private DateTime? _lastCheckedAt;
@@ -68,10 +69,11 @@ public sealed partial class OverviewViewModel : ViewModelBase
         ? Wpf.Ui.Controls.SymbolRegular.Pause24
         : Wpf.Ui.Controls.SymbolRegular.Play24;
 
-    public OverviewViewModel(AppConfig config, NetworkMonitor monitor)
+    public OverviewViewModel(AppConfig config, NetworkMonitor monitor, Action<string>? logAppender = null)
     {
         _config = config;
         _monitor = monitor;
+        _logAppender = logAppender ?? (_ => { });
     }
 
     /// <summary>Applies the latest optimization plan (or the previous one when null).</summary>
@@ -173,8 +175,17 @@ public sealed partial class OverviewViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleProtection()
     {
-        if (_monitor.IsRunning) _monitor.Stop();
-        else _monitor.Start();
+        if (_monitor.IsRunning)
+        {
+            _logAppender("[*] User requested: pause protection.");
+            _monitor.Stop();
+        }
+        else
+        {
+            _logAppender("[*] User requested: resume protection.");
+            _monitor.Start();
+        }
+
         Update(null);
     }
 
