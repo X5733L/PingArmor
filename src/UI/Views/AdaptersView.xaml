@@ -26,6 +26,7 @@
                 x:Name="FilterBox"
                 Width="280"
                 HorizontalAlignment="Left"
+                AutomationProperties.Name="{Binding Texts.AdaptersSearchPlaceholder}"
                 PlaceholderText="{Binding Texts.AdaptersSearchPlaceholder}"
                 Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" />
 
@@ -136,6 +137,7 @@
                                 <ui:ToggleSwitch
                                     Grid.Column="5"
                                     VerticalAlignment="Center"
+                                    AutomationProperties.Name="{Binding Texts.AdaptersHeaderExclude}"
                                     IsChecked="{Binding IsExcluded, Mode=TwoWay}"
                                     ToolTip="{Binding Texts.AdaptersHeaderExclude}" />
                             </Grid>

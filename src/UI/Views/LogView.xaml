@@ -36,8 +36,8 @@
         <!-- Search + actions -->
         <Grid Grid.Row="1" Margin="0,0,0,12">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                <ui:TextBox Width="240" PlaceholderText="{Binding Texts.LogSearchPlaceholder}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-                <ui:ToggleSwitch Margin="16,0,0,0" IsChecked="{Binding AutoScroll, Mode=TwoWay}" Content="{Binding Texts.LogAutoScroll}" />
+                <ui:TextBox Width="240" AutomationProperties.Name="{Binding Texts.LogSearchPlaceholder}" PlaceholderText="{Binding Texts.LogSearchPlaceholder}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                <ui:ToggleSwitch Margin="16,0,0,0" AutomationProperties.Name="{Binding Texts.LogAutoScroll}" IsChecked="{Binding AutoScroll, Mode=TwoWay}" Content="{Binding Texts.LogAutoScroll}" />
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">

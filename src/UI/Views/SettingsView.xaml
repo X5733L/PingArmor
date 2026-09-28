@@ -29,7 +29,7 @@
                 <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="Flash24" />
                 </ui:CardControl.Icon>
-                <ui:ToggleSwitch IsChecked="{Binding EnableMetricOptimization, Mode=TwoWay}" />
+                <ui:ToggleSwitch AutomationProperties.Name="{Binding Texts.MetricOptimizationTitle}" IsChecked="{Binding EnableMetricOptimization, Mode=TwoWay}" />
             </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,10">
@@ -42,7 +42,7 @@
                 <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="WifiSettings20" />
                 </ui:CardControl.Icon>
-                <ui:ToggleSwitch IsChecked="{Binding EnableWlanOptimizer, Mode=TwoWay}" />
+                <ui:ToggleSwitch AutomationProperties.Name="{Binding Texts.GamingMode}" IsChecked="{Binding EnableWlanOptimizer, Mode=TwoWay}" />
             </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,10">
@@ -55,7 +55,7 @@
                 <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="ShieldProhibited24" />
                 </ui:CardControl.Icon>
-                <ui:ToggleSwitch IsChecked="{Binding DisableIPv6OnWifi, Mode=TwoWay}" />
+                <ui:ToggleSwitch AutomationProperties.Name="{Binding Texts.DisableIPv6OnWifiTitle}" IsChecked="{Binding DisableIPv6OnWifi, Mode=TwoWay}" />
             </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,10">
@@ -68,7 +68,7 @@
                 <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="Globe24" />
                 </ui:CardControl.Icon>
-                <ui:ToggleSwitch IsChecked="{Binding DisableSmartNameResolution, Mode=TwoWay}" />
+                <ui:ToggleSwitch AutomationProperties.Name="{Binding Texts.DisableSmartDnsTitle}" IsChecked="{Binding DisableSmartNameResolution, Mode=TwoWay}" />
             </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,10">
@@ -81,7 +81,7 @@
                 <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="ShieldCheckmark24" />
                 </ui:CardControl.Icon>
-                <ui:ToggleSwitch IsChecked="{Binding DisableWpad, Mode=TwoWay}" />
+                <ui:ToggleSwitch AutomationProperties.Name="{Binding Texts.DisableWpadTitle}" IsChecked="{Binding DisableWpad, Mode=TwoWay}" />
             </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,10">
@@ -94,7 +94,7 @@
                 <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="Broom24" />
                 </ui:CardControl.Icon>
-                <ui:ToggleSwitch IsChecked="{Binding FlushDnsOnChange, Mode=TwoWay}" />
+                <ui:ToggleSwitch AutomationProperties.Name="{Binding Texts.FlushDnsTitle}" IsChecked="{Binding FlushDnsOnChange, Mode=TwoWay}" />
             </ui:CardControl>
 
             <TextBlock Text="{Binding Texts.SettingsGroupApp}" Style="{StaticResource SectionHeaderTextStyle}" Margin="0,16,0,12" />
@@ -109,7 +109,7 @@
                 <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="Power24" />
                 </ui:CardControl.Icon>
-                <ui:ToggleSwitch IsChecked="{Binding StartupWithWindows, Mode=TwoWay}" />
+                <ui:ToggleSwitch AutomationProperties.Name="{Binding Texts.StartupWithWindows}" IsChecked="{Binding StartupWithWindows, Mode=TwoWay}" />
             </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,10">
@@ -122,7 +122,7 @@
                 <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="ArrowReset24" />
                 </ui:CardControl.Icon>
-                <ui:ToggleSwitch IsChecked="{Binding RestoreOnExit, Mode=TwoWay}" />
+                <ui:ToggleSwitch AutomationProperties.Name="{Binding Texts.RestoreOnExit}" IsChecked="{Binding RestoreOnExit, Mode=TwoWay}" />
             </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,10">
@@ -135,7 +135,7 @@
                 <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="Alert24" />
                 </ui:CardControl.Icon>
-                <ui:ToggleSwitch IsChecked="{Binding ShowNotifications, Mode=TwoWay}" />
+                <ui:ToggleSwitch AutomationProperties.Name="{Binding Texts.Notifications}" IsChecked="{Binding ShowNotifications, Mode=TwoWay}" />
             </ui:CardControl>
 
             <!-- Interface language -->
