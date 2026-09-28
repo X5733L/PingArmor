@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace PingArmor.Services;
 
@@ -10,8 +11,18 @@ public static class LogService
 {
     private static readonly object _lock = new();
     private static readonly List<LogEntry> _entries = new(600);
+
+    /// <summary>Lines waiting to be appended to the file; flushed in batches to reduce file I/O.</summary>
+    private static readonly List<string> _pendingWrites = new();
+
     public const int MaxMemoryLines = 500;
     public const long MaxFileSizeBytes = 5 * 1024 * 1024; // 5 MB
+
+    /// <summary>Periodic flush interval for the write buffer (ms).</summary>
+    private const int FlushIntervalMs = 2000;
+
+    /// <summary>Flush immediately once this many lines are buffered.</summary>
+    private const int FlushBatchSize = 25;
 
     public static event Action<string>? LogAppended;
 
@@ -112,6 +123,8 @@ public static class LogService
         {
             lock (_lock)
             {
+                // Persist buffered lines to the previous path before switching files.
+                FlushToDiskLocked();
                 _customLogFilePath = value;
             }
         }
@@ -119,6 +132,8 @@ public static class LogService
 
     static LogService()
     {
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => Flush();
+
         try
         {
             string path = LogFilePath;
@@ -138,6 +153,9 @@ public static class LogService
             }
         }
         catch { }
+
+        // Bound how long a buffered line can stay out of the file.
+        _ = new Timer(_ => Flush(), null, FlushIntervalMs, FlushIntervalMs);
     }
 
     /// <summary>
@@ -166,7 +184,11 @@ public static class LogService
             }
             _entries.Add(entry);
 
-            WriteToFile(line);
+            _pendingWrites.Add(line);
+            if (_pendingWrites.Count >= FlushBatchSize)
+            {
+                FlushToDiskLocked();
+            }
         }
 
         try
@@ -180,6 +202,15 @@ public static class LogService
             LogAppended?.Invoke(line);
         }
         catch { }
+    }
+
+    /// <summary>Writes any buffered lines to disk immediately.</summary>
+    public static void Flush()
+    {
+        lock (_lock)
+        {
+            FlushToDiskLocked();
+        }
     }
 
     public static IReadOnlyList<string> GetRecentLogs()
@@ -242,8 +273,11 @@ public static class LogService
         return true;
     }
 
-    private static void WriteToFile(string entry)
+    /// <summary>Appends the buffered lines in a single file operation. Caller must hold <see cref="_lock"/>.</summary>
+    private static void FlushToDiskLocked()
     {
+        if (_pendingWrites.Count == 0) return;
+
         try
         {
             string path = LogFilePath;
@@ -253,17 +287,23 @@ public static class LogService
                 Directory.CreateDirectory(dir);
             }
 
-            var fi = new FileInfo(path);
-            if (fi.Exists && fi.Length >= MaxFileSizeBytes)
+            long currentSize = File.Exists(path) ? new FileInfo(path).Length : 0;
+            long pendingBytes = _pendingWrites.Sum(l => (long)l.Length + Environment.NewLine.Length);
+
+            if (currentSize + pendingBytes >= MaxFileSizeBytes)
             {
                 RotateLogs(path);
             }
 
-            File.AppendAllText(path, entry + Environment.NewLine);
+            File.AppendAllLines(path, _pendingWrites);
         }
         catch
         {
             // Suppress logging I/O failures so app continues operating uninterrupted
+        }
+        finally
+        {
+            _pendingWrites.Clear();
         }
     }
 

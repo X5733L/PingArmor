@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using PingArmor.Localization;
 using PingArmor.Models;
 using PingArmor.Services;
@@ -218,7 +219,16 @@ public partial class DashboardWindow : FluentWindow
     {
         ThemeService.UnregisterWindow(this);
         LocalizationService.LanguageChanged -= OnLanguageChanged;
+
+        var dispatcher = Dispatcher;
         base.OnClosed(e);
+
+        // The dashboard is recreated on demand, so release its visual tree promptly
+        // instead of waiting for the next natural Gen2 collection.
+        dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
+        {
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Optimized, blocking: false, compacting: false);
+        }));
     }
 
     #endregion

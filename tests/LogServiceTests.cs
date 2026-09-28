@@ -22,6 +22,7 @@ public class LogServiceTests : IDisposable
     {
         try
         {
+            LogService.Flush();
             if (File.Exists(_testLogPath)) File.Delete(_testLogPath);
             string old = _testLogPath + ".old";
             if (File.Exists(old)) File.Delete(old);
@@ -88,6 +89,7 @@ public class LogServiceTests : IDisposable
     public void Log_WritesToFileOnDisk()
     {
         LogService.Log("Disk write validation message");
+        LogService.Flush();
 
         Assert.True(File.Exists(_testLogPath));
         string content = File.ReadAllText(_testLogPath);
@@ -101,6 +103,8 @@ public class LogServiceTests : IDisposable
         {
             LogService.Log($"Concurrent test entry {i}");
         });
+
+        LogService.Flush();
 
         var recent = LogService.GetRecentLogs();
         Assert.True(recent.Count >= 50);
@@ -127,6 +131,7 @@ public class LogServiceTests : IDisposable
         File.WriteAllBytes(_testLogPath, dummyData);
 
         LogService.Log("Trigger rotation");
+        LogService.Flush();
 
         string oldPath = _testLogPath + ".old";
         Assert.True(File.Exists(oldPath), "Old log file should exist after rotation");

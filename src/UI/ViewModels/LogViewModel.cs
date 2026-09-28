@@ -122,6 +122,7 @@ public sealed partial class LogViewModel : ViewModelBase
     {
         try
         {
+            LogService.Flush();
             string path = LogService.LogFilePath;
             if (!File.Exists(path))
             {
